@@ -19,6 +19,17 @@ if ([string]::IsNullOrWhiteSpace($OrgCode)) {
     throw "ORG CODE is required."
 }
 
+if ([string]::IsNullOrWhiteSpace($ApiKey)) {
+    $SecureApiKey = Read-Host "API KEY (leave blank if backend does not require one)" -AsSecureString
+    $BSTR = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecureApiKey)
+    try {
+        $ApiKey = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($BSTR)
+    }
+    finally {
+        [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)
+    }
+}
+
 if ($Version -eq "latest") {
     $releaseBaseUrl = "https://github.com/$Repo/releases/latest/download"
 }
@@ -42,13 +53,15 @@ $installArgs = @(
 )
 
 if (-not [string]::IsNullOrWhiteSpace($ApiKey)) {
-    $installArgs += @("--api-key", $ApiKey)
+    $env:OUTPOST_AGENT_API_KEY = $ApiKey
 }
 
 Write-Host "Writing OUTPOST agent configuration..."
 & $installerExe @installArgs
-if ($LASTEXITCODE -ne 0) {
-    throw "OUTPOST agent installer failed with exit code $LASTEXITCODE."
+$exitCode = $LASTEXITCODE
+Remove-Item Env:\OUTPOST_AGENT_API_KEY -ErrorAction SilentlyContinue
+if ($exitCode -ne 0) {
+    throw "OUTPOST agent installer failed with exit code $exitCode."
 }
 
 Write-Host "OUTPOST agent installed to: $InstallDir"
@@ -59,4 +72,3 @@ if ($StartAgent) {
 else {
     Write-Host "Start it with: $agentExe"
 }
-

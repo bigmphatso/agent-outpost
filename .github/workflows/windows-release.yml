@@ -31,8 +31,8 @@ jobs:
 
       - name: Build agent executables
         run: |
-          python -m PyInstaller --clean --onefile --console --name outpost-agent outpost_agent/main.py
-          python -m PyInstaller --clean --onefile --console --name outpost-agent-install outpost_agent/installer.py
+          python -m PyInstaller --clean --onefile --console --icon assets/Outpost-logo.ico --name outpost-agent outpost_agent/main.py
+          python -m PyInstaller --clean --onefile --console --icon assets/Outpost-logo.ico --name outpost-agent-install outpost_agent/installer.py
 
       - name: Create checksums and zip bundle
         shell: pwsh
@@ -65,4 +65,3 @@ jobs:
             dist/outpost-agent-install.exe
             dist/SHA256SUMS.txt
             outpost-agent-windows-x64.zip
-

@@ -49,6 +49,8 @@ After installation, the config is saved to:
 %PROGRAMDATA%\OUTPOST\agent-config.json
 ```
 
+If the backend requires `OUTPOST_API_KEY`, the installer prompts for the API key without echoing it. The saved config stores it as `api_key_protected`, not `api_key`. On Windows, `api_key_protected` is encrypted with DPAPI for the local machine/user context.
+
 On non-Windows systems, the fallback path is:
 
 ```text
@@ -91,8 +93,8 @@ Tagged releases build downloadable Windows executables through GitHub Actions:
 To publish a release, push a version tag:
 
 ```powershell
-git tag v0.1.0
-git push origin v0.1.0
+git tag v.1
+git push origin v.1
 ```
 
 The workflow at `.github/workflows/windows-release.yml` builds the executables and attaches them to the GitHub Release for that tag.
@@ -111,7 +113,7 @@ powershell -ExecutionPolicy Bypass -File $Installer `
   -OrgCode "DEMO-ORG"
 ```
 
-For a specific release, pass `-Version "v0.1.0"`.
+For a specific release, pass `-Version "v.1"`.
 
 ## Runtime Configuration
 
@@ -121,6 +123,7 @@ The installed config stores:
 - `org_code` - organization code used during device registration.
 - `agent_version` - local agent version.
 - `poll_interval_seconds` - heartbeat, health report, and task polling interval.
+- `api_key_protected` - encrypted API key for backend `X-API-Key` authentication when configured.
 
 The runtime can override installed config values:
 

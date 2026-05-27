@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 
 from outpost_agent.config import AgentConfig, default_config_path, save_config
@@ -17,8 +18,19 @@ def prompt_if_missing(value: str | None, label: str) -> str:
     return entered
 
 
-def install_agent(backend_url: str, org_code: str, poll_interval: int, config_path: Path | None = None) -> Path:
-    config = AgentConfig(backend_url=backend_url.rstrip("/"), org_code=org_code.strip().upper(), poll_interval_seconds=poll_interval)
+def install_agent(
+    backend_url: str,
+    org_code: str,
+    poll_interval: int,
+    config_path: Path | None = None,
+    api_key: str | None = None,
+) -> Path:
+    config = AgentConfig(
+        backend_url=backend_url.rstrip("/"),
+        org_code=org_code.strip().upper(),
+        poll_interval_seconds=poll_interval,
+        api_key=api_key,
+    )
     return save_config(config, config_path)
 
 
@@ -32,11 +44,12 @@ def main() -> None:
     args = parser.parse_args()
 
     org_code = prompt_if_missing(args.org_code, "ORG CODE")
+    api_key = args.api_key or os.environ.get("OUTPOST_AGENT_API_KEY")
     config = AgentConfig(
         backend_url=args.backend.rstrip("/"),
         org_code=org_code.strip().upper(),
         poll_interval_seconds=args.poll_interval,
-        api_key=args.api_key,
+        api_key=api_key,
     )
     config_path = save_config(config, args.config)
 

@@ -49,6 +49,17 @@ if ([string]::IsNullOrWhiteSpace($OrgCode)) {
     throw "ORG CODE is required."
 }
 
+if ([string]::IsNullOrWhiteSpace($ApiKey)) {
+    $SecureApiKey = Read-Host "API KEY (leave blank if backend does not require one)" -AsSecureString
+    $BSTR = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecureApiKey)
+    try {
+        $ApiKey = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($BSTR)
+    }
+    finally {
+        [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)
+    }
+}
+
 $pythonCommand = Find-Python
 $workRoot = Join-Path $env:TEMP ("outpost-agent-install-" + [guid]::NewGuid().ToString("N"))
 $zipPath = Join-Path $workRoot "outpost.zip"
@@ -84,7 +95,7 @@ try {
     )
 
     if (-not [string]::IsNullOrWhiteSpace($ApiKey)) {
-        $installArgs += @("--api-key", $ApiKey)
+        $env:OUTPOST_AGENT_API_KEY = $ApiKey
     }
 
     Write-Host "Writing OUTPOST agent configuration..."
@@ -100,6 +111,7 @@ try {
     }
 }
 finally {
+    Remove-Item Env:\OUTPOST_AGENT_API_KEY -ErrorAction SilentlyContinue
     if (Test-Path $workRoot) {
         Remove-Item -LiteralPath $workRoot -Recurse -Force -ErrorAction SilentlyContinue
     }
