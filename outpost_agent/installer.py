@@ -4,7 +4,7 @@ import argparse
 import os
 from pathlib import Path
 
-from outpost_agent.config import AgentConfig, default_config_path, save_config
+from outpost_agent.config import AgentConfig, config_security_summary, default_config_path, harden_path_permissions, load_config, save_config
 
 DEFAULT_BACKEND_URL = "https://outpost-listener.vercel.app"
 
@@ -41,9 +41,17 @@ def main() -> None:
     parser.add_argument("--api-key", help="Optional API key for authenticated backend calls.")
     parser.add_argument("--poll-interval", type=int, default=30)
     parser.add_argument("--config", type=Path, default=default_config_path())
+    parser.add_argument("--harden-config", action="store_true", help="Repair config file permissions and migrate plaintext secrets.")
     args = parser.parse_args()
 
-    org_code = prompt_if_missing(args.org_code, "ORG CODE")
+    if args.harden_config:
+        load_config(args.config)
+        harden_path_permissions(args.config)
+        print(f"OUTPOST agent configuration hardened: {args.config}")
+        print(config_security_summary(args.config))
+        return
+
+    org_code = prompt_if_missing(args.org_code, "ORGANIZATION CODE")
     api_key = args.api_key or os.environ.get("OUTPOST_AGENT_API_KEY")
     config = AgentConfig(
         backend_url=args.backend.rstrip("/"),

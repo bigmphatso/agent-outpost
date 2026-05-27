@@ -51,6 +51,17 @@ After installation, the config is saved to:
 
 If the backend requires `OUTPOST_API_KEY`, the installer prompts for the API key without echoing it. The saved config stores it as `api_key_protected`, not `api_key`. On Windows, `api_key_protected` is encrypted with DPAPI for the local machine/user context.
 
+The installer also hardens the config directory and file permissions. On Windows, the ACL is restricted to `SYSTEM`, `Administrators`, and the installing user. On Linux/macOS, the directory is set to `700` and the file to `600`.
+
+To repair an existing config file:
+
+```powershell
+cd agent-op
+python -m outpost_agent.installer --harden-config
+```
+
+This command also migrates a legacy plaintext `api_key` field into `api_key_protected`.
+
 On non-Windows systems, the fallback path is:
 
 ```text
@@ -60,7 +71,7 @@ On non-Windows systems, the fallback path is:
 ## Manual Installation
 
 ```powershell
-cd agent
+cd agent-op
 python -m pip install -e .
 outpost-agent-install --org-code DEMO-ORG
 outpost-agent
@@ -78,6 +89,7 @@ Invoke-WebRequest `
 
 powershell -ExecutionPolicy Bypass -File $Installer `
   -BackendUrl "https://outpost-listener.vercel.app" `
+  -ApiKey "YOUR-BACKEND-API-KEY" `
   -OrgCode "DEMO-ORG" `
   -RepoZipUrl "https://github.com/YOUR_GITHUB_ORG/OUTPOST/archive/refs/heads/main.zip"
 ```
@@ -110,6 +122,7 @@ Invoke-WebRequest `
 powershell -ExecutionPolicy Bypass -File $Installer `
   -Repo "YOUR_GITHUB_ORG/OUTPOST" `
   -BackendUrl "https://outpost-listener.vercel.app" `
+  -ApiKey "YOUR-BACKEND-API-KEY" `
   -OrgCode "DEMO-ORG"
 ```
 
@@ -130,6 +143,23 @@ The runtime can override installed config values:
 ```powershell
 outpost-agent --backend http://server.example:8000 --poll-interval 60
 ```
+
+If the deployed backend has `OUTPOST_API_KEY` configured, the installed agent must have the same key:
+
+```powershell
+outpost-agent-install `
+  --backend https://outpost-listener.vercel.app `
+  --org-code DEMO-ORG `
+  --api-key YOUR-BACKEND-API-KEY
+```
+
+Your current config can be checked at:
+
+```text
+%PROGRAMDATA%\OUTPOST\agent-config.json
+```
+
+If `device_id` is `null`, the agent has not successfully registered yet.
 
 By default, new installs communicate with the deployed BACKEND-OUTPOST listener:
 
