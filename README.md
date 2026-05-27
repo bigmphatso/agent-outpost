@@ -1,0 +1,193 @@
+# OUTPOST Agent
+
+The agent is the lightweight endpoint component installed on every organizational device. It registers the device with the backend, reports inventory and health data, sends heartbeat updates, and polls for approved remote management tasks.
+
+## Responsibilities
+
+- Install with an organization-issued `ORG CODE`.
+- Register the endpoint with the central backend.
+- Collect hardware, operating system, disk, and basic software inventory.
+- Send regular heartbeat updates so the dashboard can show online/offline state.
+- Report health posture used for monitoring and alerting.
+- Poll for remote management tasks and execute only allowlisted commands.
+- Store outbound data locally in SQLite so offline devices can buffer updates and retry automatically.
+
+## Folder Structure
+
+- `outpost_agent/main.py` - runtime entrypoint for the installed agent.
+- `outpost_agent/installer.py` - installation/configuration entrypoint that prompts for `ORG CODE`.
+- `outpost_agent/config.py` - local config storage and loading.
+- `outpost_agent/client.py` - HTTP client for backend communication.
+- `outpost_agent/local_store.py` - local SQLite outbox for offline buffering and retry.
+- `outpost_agent/phase1_device_visibility/` - registration and inventory collectors.
+- `outpost_agent/phase2_monitoring_alerts/` - endpoint health checks + reports.
+- `outpost_agent/phase3_remote_management/` - remote task polling + allowlisted execution.
+- `scripts/install-agent.ps1` - Windows-friendly setup script.
+- `scripts/install-agent-from-github.ps1` - Windows bootstrap installer for devices that download the agent from GitHub.
+- `scripts/install-agent-release.ps1` - Windows bootstrap installer for GitHub Release `.exe` assets.
+- `pyproject.toml` - installable package metadata and command registration.
+- `requirements.txt` - direct runtime dependency list.
+
+## Installation Flow
+
+The setter installs the package and enters the organization code issued by the platform administrator.
+
+```powershell
+cd agent
+.\scripts\install-agent.ps1
+```
+
+The script prompts:
+
+```text
+ORG CODE:
+```
+
+After installation, the config is saved to:
+
+```text
+%PROGRAMDATA%\OUTPOST\agent-config.json
+```
+
+On non-Windows systems, the fallback path is:
+
+```text
+~/.outpost/agent-config.json
+```
+
+## Manual Installation
+
+```powershell
+cd agent
+python -m pip install -e .
+outpost-agent-install --org-code DEMO-ORG
+outpost-agent
+```
+
+## GitHub Bootstrap Installation
+
+After this repository is published to GitHub, Windows devices can install the agent from a raw GitHub script and repository ZIP archive:
+
+```powershell
+$Installer = "$env:TEMP\install-outpost-agent.ps1"
+Invoke-WebRequest `
+  -Uri "https://raw.githubusercontent.com/YOUR_GITHUB_ORG/OUTPOST/main/agent/scripts/install-agent-from-github.ps1" `
+  -OutFile $Installer
+
+powershell -ExecutionPolicy Bypass -File $Installer `
+  -BackendUrl "https://outpost-listener.vercel.app" `
+  -OrgCode "DEMO-ORG" `
+  -RepoZipUrl "https://github.com/YOUR_GITHUB_ORG/OUTPOST/archive/refs/heads/main.zip"
+```
+
+## GitHub Release EXE Installation
+
+Tagged releases build downloadable Windows executables through GitHub Actions:
+
+- `outpost-agent.exe` - runs the endpoint agent.
+- `outpost-agent-install.exe` - writes the local agent configuration.
+- `outpost-agent-windows-x64.zip` - bundle containing both executables and `SHA256SUMS.txt`.
+
+To publish a release, push a version tag:
+
+```powershell
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+The workflow at `.github/workflows/windows-release.yml` builds the executables and attaches them to the GitHub Release for that tag.
+
+Windows devices can install from the latest GitHub Release:
+
+```powershell
+$Installer = "$env:TEMP\install-outpost-agent-release.ps1"
+Invoke-WebRequest `
+  -Uri "https://raw.githubusercontent.com/YOUR_GITHUB_ORG/OUTPOST/main/agent/scripts/install-agent-release.ps1" `
+  -OutFile $Installer
+
+powershell -ExecutionPolicy Bypass -File $Installer `
+  -Repo "YOUR_GITHUB_ORG/OUTPOST" `
+  -BackendUrl "https://outpost-listener.vercel.app" `
+  -OrgCode "DEMO-ORG"
+```
+
+For a specific release, pass `-Version "v0.1.0"`.
+
+## Runtime Configuration
+
+The installed config stores:
+
+- `backend_url` - backend API base URL.
+- `org_code` - organization code used during device registration.
+- `agent_version` - local agent version.
+- `poll_interval_seconds` - heartbeat, health report, and task polling interval.
+
+The runtime can override installed config values:
+
+```powershell
+outpost-agent --backend http://server.example:8000 --poll-interval 60
+```
+
+By default, new installs communicate with the deployed BACKEND-OUTPOST listener:
+
+```text
+https://outpost-listener.vercel.app
+```
+
+## Local SQLite Outbox
+
+The agent does not rely only on memory. Runtime telemetry is written to a local SQLite database before sync attempts.
+
+Default path on Windows:
+
+```text
+%PROGRAMDATA%\OUTPOST\agent-state.sqlite3
+```
+
+Default path on non-Windows systems:
+
+```text
+~/.outpost/agent-state.sqlite3
+```
+
+The SQLite outbox stores:
+
+- inventory reports
+- heartbeat updates
+- health reports
+- registry telemetry events
+- registry snapshots
+
+When the internet or backend is unavailable, the agent keeps the records locally. On later ticks, it retries the oldest queued records first and deletes each record only after the backend accepts it.
+
+## Backend Communication
+
+The agent currently calls:
+
+- `POST /api/v1/devices/register`
+- `POST /api/v1/devices/{device_id}/inventory`
+- `POST /api/v1/devices/{device_id}/heartbeat`
+- `POST /api/v1/devices/{device_id}/health`
+- `GET /api/v1/remote/devices/{device_id}/tasks`
+- `POST /api/v1/remote/devices/{device_id}/tasks/{task_id}/result`
+
+## Remote Task Safety
+
+Remote execution is intentionally restricted in `phase3_remote_management/executor.py`.
+
+Only commands matching the local allowlist can run. Anything else is rejected and reported back to the backend. This keeps remote administration useful while avoiding unrestricted remote shell behavior.
+
+## Current Limitations
+
+- The agent runs as a foreground process.
+- Windows/Linux service registration is not implemented yet.
+- Antivirus and update checks are placeholder values.
+- Device identity is created fresh on each registration; persistent device identity should be added before production use.
+
+## Next Steps
+
+- Add persistent `device_id` storage after first registration.
+- Add Windows service installation.
+- Add Linux systemd service installation.
+- Replace placeholder health checks with OS-specific collectors.
+- Add signed agent update support.

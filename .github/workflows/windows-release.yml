@@ -1,0 +1,68 @@
+name: Build Windows Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows-exe:
+    name: Build Windows executables
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install ".[build]"
+
+      - name: Build agent executables
+        run: |
+          python -m PyInstaller --clean --onefile --console --name outpost-agent outpost_agent/main.py
+          python -m PyInstaller --clean --onefile --console --name outpost-agent-install outpost_agent/installer.py
+
+      - name: Create checksums and zip bundle
+        shell: pwsh
+        run: |
+          Get-FileHash dist\outpost-agent.exe, dist\outpost-agent-install.exe -Algorithm SHA256 |
+            ForEach-Object { "$($_.Hash)  $(Split-Path -Leaf $_.Path)" } |
+            Set-Content -Path dist\SHA256SUMS.txt -Encoding ascii
+
+          Compress-Archive `
+            -Path dist\outpost-agent.exe, dist\outpost-agent-install.exe, dist\SHA256SUMS.txt `
+            -DestinationPath outpost-agent-windows-x64.zip `
+            -Force
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: outpost-agent-windows-x64
+          path: |
+            dist/outpost-agent.exe
+            dist/outpost-agent-install.exe
+            dist/SHA256SUMS.txt
+            outpost-agent-windows-x64.zip
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/outpost-agent.exe
+            dist/outpost-agent-install.exe
+            dist/SHA256SUMS.txt
+            outpost-agent-windows-x64.zip
+
