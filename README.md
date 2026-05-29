@@ -25,6 +25,9 @@ The agent is the lightweight endpoint component installed on every organizationa
 - `scripts/install-agent.ps1` - Windows-friendly setup script.
 - `scripts/install-agent-from-github.ps1` - Windows bootstrap installer for devices that download the agent from GitHub.
 - `scripts/install-agent-release.ps1` - Windows bootstrap installer for GitHub Release `.exe` assets.
+- `scripts/install-agent-package.ps1` - installs the bundled Windows release package after download.
+- `scripts/uninstall-outpost-agent.ps1` - removes installed Windows agent files.
+- `installer-package/README.md` - instructions included inside the release installer package.
 - `pyproject.toml` - installable package metadata and command registration.
 - `requirements.txt` - direct runtime dependency list.
 
@@ -101,6 +104,7 @@ Tagged releases build downloadable Windows executables through GitHub Actions:
 - `outpost-agent.exe` - runs the endpoint agent.
 - `outpost-agent-install.exe` - writes the local agent configuration.
 - `outpost-agent-windows-x64.zip` - bundle containing both executables and `SHA256SUMS.txt`.
+- `outpost-agent-installer-windows-x64.zip` - user-facing installer package with executables, install/uninstall scripts, checksums, README, and release manifest.
 
 To publish a release, push a version tag:
 
@@ -127,6 +131,20 @@ powershell -ExecutionPolicy Bypass -File $Installer `
 ```
 
 For a specific release, pass `-Version "v.1"`.
+
+You can also download `outpost-agent-installer-windows-x64.zip` from the release page, extract it, and run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\install-agent-package.ps1 `
+  -BackendUrl "https://outpost-listener.vercel.app" `
+  -OrgCode "DEMO-ORG"
+```
+
+To remove the installed files:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\uninstall-outpost-agent.ps1
+```
 
 ## Runtime Configuration
 
@@ -224,3 +242,12 @@ Only commands matching the local allowlist can run. Anything else is rejected an
 - Add Linux systemd service installation.
 - Replace placeholder health checks with OS-specific collectors.
 - Add signed agent update support.
+
+# Commit for the release executables
+- `
+git status
+git add agent-op/.github/workflows/windows-release.yml agent-op/README.md agent-op/installer-package/README.md agent-op/scripts/install-agent-package.ps1 agent-op/scripts/uninstall-outpost-agent.ps1
+git commit -m "Update agent installer release package"
+git tag v.1.2
+git push origin main
+git push origin v.1.2`
