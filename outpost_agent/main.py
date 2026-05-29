@@ -52,9 +52,8 @@ def flush_outbox(client: BackendClient, db_path: Path, *, limit: int = 50) -> No
             break
 
 
-def run(config: AgentConfig) -> None:
+def run(config: AgentConfig, config_path: Path | None = None) -> None:
     client = BackendClient(config.backend_url, api_key=config.api_key)
-    config_path: Path | None = None
     device_id = register_if_needed(client, config, config_path)
 
     last_inventory_at = 0.0
@@ -115,7 +114,7 @@ def run(config: AgentConfig) -> None:
             backoff_seconds *= 2
 
 
-def parse_args() -> AgentConfig:
+def parse_args() -> tuple[AgentConfig, Path | None]:
     parser = argparse.ArgumentParser(description="Run the OUTPOST endpoint agent.")
     parser.add_argument("--config", type=Path, help="Path to an installed OUTPOST agent config file.")
     parser.add_argument("--backend", help="Backend API base URL. Overrides installed config when provided.")
@@ -135,18 +134,22 @@ def parse_args() -> AgentConfig:
             config.api_key = args.api_key
         if args.poll_interval is not None:
             config.poll_interval_seconds = args.poll_interval
-        return config
+        return config, args.config
 
-    return AgentConfig(
-        backend_url=args.backend,
-        org_code=args.org_code or args.activation_code,
-        api_key=args.api_key,
-        poll_interval_seconds=args.poll_interval or 30,
+    return (
+        AgentConfig(
+            backend_url=args.backend,
+            org_code=args.org_code or args.activation_code,
+            api_key=args.api_key,
+            poll_interval_seconds=args.poll_interval or 30,
+        ),
+        None,
     )
 
 
 def main() -> None:
-    run(parse_args())
+    config, config_path = parse_args()
+    run(config, config_path)
 
 
 if __name__ == "__main__":

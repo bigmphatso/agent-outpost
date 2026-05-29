@@ -25,9 +25,14 @@ The agent is the lightweight endpoint component installed on every organizationa
 - `scripts/install-agent.ps1` - Windows-friendly setup script.
 - `scripts/install-agent-from-github.ps1` - Windows bootstrap installer for devices that download the agent from GitHub.
 - `scripts/install-agent-release.ps1` - Windows bootstrap installer for GitHub Release `.exe` assets.
+<<<<<<< HEAD
 - `scripts/install-agent-package.ps1` - installs the bundled Windows release package after download.
 - `scripts/uninstall-outpost-agent.ps1` - removes installed Windows agent files.
 - `installer-package/README.md` - instructions included inside the release installer package.
+=======
+- `scripts/install-agent.sh` - Linux setup script with optional systemd service installation.
+- `scripts/install-agent-from-github.sh` - Linux bootstrap installer for devices that download the agent from GitHub.
+>>>>>>> 087d43e537b9ff3fcf6a26325fab9eb127390c65
 - `pyproject.toml` - installable package metadata and command registration.
 - `requirements.txt` - direct runtime dependency list.
 
@@ -71,6 +76,12 @@ On non-Windows systems, the fallback path is:
 ~/.outpost/agent-config.json
 ```
 
+For Linux systemd installs, the installer creates a locked-down service account and moves the runtime config/state into:
+
+```text
+/var/lib/outpost/
+```
+
 ## Manual Installation
 
 ```powershell
@@ -79,6 +90,31 @@ python -m pip install -e .
 outpost-agent-install --org-code DEMO-ORG
 outpost-agent
 ```
+
+## Linux Installation
+
+Install the Python package and write the endpoint configuration:
+
+```bash
+cd agent-op
+./scripts/install-agent.sh \
+  --backend-url https://outpost-listener.vercel.app \
+  --org-code DEMO-ORG
+outpost-agent
+```
+
+Install and start the Linux systemd service:
+
+```bash
+cd agent-op
+sudo ./scripts/install-agent.sh \
+  --backend-url https://outpost-listener.vercel.app \
+  --org-code DEMO-ORG \
+  --install-service \
+  --start-agent
+```
+
+The service runs as the `outpost` system user by default and stores config/state in `/var/lib/outpost`.
 
 ## GitHub Bootstrap Installation
 
@@ -95,6 +131,21 @@ powershell -ExecutionPolicy Bypass -File $Installer `
   -ApiKey "YOUR-BACKEND-API-KEY" `
   -OrgCode "DEMO-ORG" `
   -RepoZipUrl "https://github.com/YOUR_GITHUB_ORG/OUTPOST/archive/refs/heads/main.zip"
+```
+
+Linux devices can use the equivalent shell bootstrapper:
+
+```bash
+curl -fsSL \
+  https://raw.githubusercontent.com/YOUR_GITHUB_ORG/OUTPOST/main/agent-op/scripts/install-agent-from-github.sh \
+  -o /tmp/install-outpost-agent.sh
+
+sudo bash /tmp/install-outpost-agent.sh \
+  --backend-url https://outpost-listener.vercel.app \
+  --org-code DEMO-ORG \
+  --repo-zip-url https://github.com/YOUR_GITHUB_ORG/OUTPOST/archive/refs/heads/main.zip \
+  --install-service \
+  --start-agent
 ```
 
 ## GitHub Release EXE Installation
@@ -171,6 +222,15 @@ outpost-agent-install `
   --api-key YOUR-BACKEND-API-KEY
 ```
 
+Linux equivalent:
+
+```bash
+outpost-agent-install \
+  --backend https://outpost-listener.vercel.app \
+  --org-code DEMO-ORG \
+  --api-key YOUR-BACKEND-API-KEY
+```
+
 Your current config can be checked at:
 
 ```text
@@ -209,6 +269,8 @@ The SQLite outbox stores:
 - registry telemetry events
 - registry snapshots
 
+On Linux, inventory includes distro/kernel details, SMBIOS serial data when exposed by the host, hashed hardware fingerprint components, memory/disk totals, and a capped package inventory. Health includes pending update counts, ClamAV presence/status when available, signature age, disk free percentage, and a small suspicious-process heuristic for executables running from temporary directories.
+
 When the internet or backend is unavailable, the agent keeps the records locally. On later ticks, it retries the oldest queued records first and deletes each record only after the backend accepts it.
 
 ## Backend Communication
@@ -230,17 +292,16 @@ Only commands matching the local allowlist can run. Anything else is rejected an
 
 ## Current Limitations
 
-- The agent runs as a foreground process.
-- Windows/Linux service registration is not implemented yet.
-- Antivirus and update checks are placeholder values.
+- Windows service registration is not implemented yet.
+- Windows antivirus and update checks are placeholder values.
 - Device identity is created fresh on each registration; persistent device identity should be added before production use.
 
 ## Next Steps
 
 - Add persistent `device_id` storage after first registration.
 - Add Windows service installation.
-- Add Linux systemd service installation.
-- Replace placeholder health checks with OS-specific collectors.
+- Expand Linux systemd hardening and package-manager coverage.
+- Replace remaining Windows placeholder health checks with OS-specific collectors.
 - Add signed agent update support.
 
 # Commit for the release executables
