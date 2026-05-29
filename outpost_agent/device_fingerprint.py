@@ -5,6 +5,8 @@ import re
 import subprocess
 import sys
 
+from outpost_agent.linux_platform import is_linux, read_first_existing
+
 
 UNKNOWN_COMPONENT = "UNKNOWN_COMPONENT"
 
@@ -56,13 +58,34 @@ def _powershell(command: str) -> str | None:
 
 def collect_hardware_fingerprint() -> dict[str, str]:
     """
-    Best-effort Windows hardware fingerprint components.
+    Best-effort hardware fingerprint components.
 
-    Strategy aligns with docs/Hardware_Device_ID_Strategy.pdf:
+    Windows strategy aligns with docs/Hardware_Device_ID_Strategy.pdf:
     - Motherboard UUID (SMBIOS system UUID)
     - TPM Endorsement Key public hash (when available)
     - CPU ProcessorId
     """
+    if is_linux():
+        machine_id = read_first_existing(["/etc/machine-id", "/var/lib/dbus/machine-id"])
+        product_uuid = read_first_existing(["/sys/class/dmi/id/product_uuid"])
+        board_serial = read_first_existing(["/sys/class/dmi/id/board_serial", "/sys/class/dmi/id/product_serial"])
+        cpu_signature = None
+        try:
+            with open("/proc/cpuinfo", "r", encoding="utf-8", errors="ignore") as handle:
+                cpu_signature = "\n".join(
+                    line.strip()
+                    for line in handle
+                    if line.startswith(("vendor_id", "model name", "cpu family", "model", "stepping"))
+                )
+        except Exception:
+            pass
+        return {
+            "machine_id": _hash_component(machine_id),
+            "motherboard_uuid": _hash_component(product_uuid),
+            "board_serial": _hash_component(board_serial),
+            "cpu_id": _hash_component(cpu_signature),
+        }
+
     if not _is_windows():
         return {
             "motherboard_uuid": UNKNOWN_COMPONENT,
@@ -79,4 +102,3 @@ def collect_hardware_fingerprint() -> dict[str, str]:
         "tpm_endorsement_hash": _hash_component(tpm_hash),
         "cpu_id": _hash_component(cpu_id),
     }
-

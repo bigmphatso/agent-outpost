@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import json
+import platform
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from outpost_agent.linux_platform import is_linux as is_linux_platform
+from outpost_agent.linux_platform import linux_distribution_name, linux_os_release, read_first_existing, run_command
 from outpost_agent.registry_intelligence.models import RegistryEvent, RegistrySnapshot
 from outpost_agent.registry_intelligence.windows_registry import is_windows
 
@@ -42,6 +45,56 @@ def save_snapshot(path: Path, snapshot: RegistrySnapshot) -> None:
 
 
 def collect_snapshot() -> RegistrySnapshot:
+    if is_linux_platform():
+        snapshot = RegistrySnapshot()
+        release = linux_os_release()
+        snapshot.device_identity = {
+            "platform": "linux",
+            "distribution": linux_distribution_name(),
+            "kernel": platform.release(),
+            "machine_id_present": bool(read_first_existing(["/etc/machine-id", "/var/lib/dbus/machine-id"])),
+            "product_uuid_present": bool(read_first_existing(["/sys/class/dmi/id/product_uuid"])),
+            "id": release.get("ID"),
+            "version_id": release.get("VERSION_ID"),
+        }
+
+        usb_devices: dict[str, Any] = {}
+        for block_device in Path("/sys/block").glob("*"):
+            try:
+                removable = (block_device / "removable").read_text(encoding="utf-8").strip()
+            except Exception:
+                continue
+            if removable != "1":
+                continue
+            usb_devices[block_device.name] = {
+                "device": block_device.name,
+                "model": read_first_existing([str(block_device / "device/model")]),
+                "vendor": read_first_existing([str(block_device / "device/vendor")]),
+                "size_sectors": read_first_existing([str(block_device / "size")]),
+            }
+        snapshot.usb_devices = usb_devices
+
+        autoruns: dict[str, Any] = {}
+        enabled_units = run_command(["systemctl", "list-unit-files", "--state=enabled", "--no-legend"], timeout=12)
+        if enabled_units:
+            autoruns["systemd_enabled_units"] = {
+                line.split()[0]: line.split()[1] if len(line.split()) > 1 else "enabled"
+                for line in enabled_units.splitlines()
+                if line.strip()
+            }
+        cron_paths = ["/etc/crontab", "/etc/cron.d", "/etc/cron.daily", "/etc/cron.hourly", "/etc/cron.weekly", "/etc/cron.monthly"]
+        cron_entries = {}
+        for cron_path in cron_paths:
+            path = Path(cron_path)
+            if path.is_file():
+                cron_entries[str(path)] = {"kind": "file", "mode": oct(path.stat().st_mode & 0o777)}
+            elif path.is_dir():
+                cron_entries[str(path)] = sorted(child.name for child in path.iterdir() if not child.name.startswith("."))
+        if cron_entries:
+            autoruns["cron"] = cron_entries
+        snapshot.autoruns = autoruns
+        return snapshot
+
     if not is_windows():
         return RegistrySnapshot()
 
@@ -165,4 +218,3 @@ def run_registry_intelligence_scan(
     events = diff_events(previous=previous, current=current, device_id=device_id, organization_id=organization_id)
     save_snapshot(snapshot_path, current)
     return {"events": [asdict(event) for event in events], "snapshot": asdict(current), "collected_at": now_iso()}
-
