@@ -204,6 +204,78 @@ To remove the installed files:
 powershell -ExecutionPolicy Bypass -File .\uninstall-outpost-agent.ps1
 ```
 
+## New Windows Device Setup From Zero
+
+Use this flow on a clean Windows endpoint.
+
+### Option 1: Installer Package
+
+1. Download `outpost-agent-installer-windows-x64.zip` from the GitHub release.
+2. Extract the zip to a local folder.
+3. Open PowerShell in the extracted folder.
+4. Run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\install-agent-package.ps1
+```
+
+The installer prompts:
+
+```text
+ORGANISATIONAL CODE:
+PASSCODE (API):
+```
+
+You can also provide both values non-interactively:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\install-agent-package.ps1 `
+  -BackendUrl "https://outpost-listener.vercel.app" `
+  -OrgCode "DEMO-ORG" `
+  -Passcode "YOUR-PASSCODE"
+```
+
+The PASSCODE is the same backend API key value, but the installer presents it as PASSCODE for users.
+
+### Option 2: Direct EXEs
+
+If you download only the two executables:
+
+1. Put `outpost-agent.exe` and `outpost-agent-install.exe` in the same folder.
+2. Run the installer executable first:
+
+```powershell
+.\outpost-agent-install.exe
+```
+
+It prompts for:
+
+```text
+ORGANISATIONAL CODE:
+PASSCODE (API):
+```
+
+The installer writes:
+
+```text
+C:\ProgramData\OUTPOST\agent-config.json
+```
+
+The passcode is stored as `api_key_protected` using Windows DPAPI where available.
+
+3. Start the agent:
+
+```powershell
+.\outpost-agent.exe
+```
+
+If the agent says the config is missing, run `outpost-agent-install.exe` first. If registration fails, check:
+
+- the Organisational Code is correct
+- the PASSCODE/API key matches the deployed backend
+- the backend URL is reachable
+- the device has internet access
+
 ## Runtime Configuration
 
 The installed config stores:

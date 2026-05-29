@@ -24,6 +24,21 @@ powershell -ExecutionPolicy Bypass -File .\install-agent-package.ps1 `
 
 The installer prompts for the Organisational Code and PASSCODE if either value is omitted. `-ApiKey` is still accepted as a legacy alias for `-Passcode`.
 
+The PASSCODE is the same backend API key value. It is masked as PASSCODE in the installer UX and stored through the existing protected API key path.
+
+Interactive install:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\install-agent-package.ps1
+```
+
+Prompts:
+
+```text
+ORGANISATIONAL CODE:
+PASSCODE (API):
+```
+
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\install-agent-package.ps1 `
   -BackendUrl "https://outpost-listener.vercel.app" `
@@ -47,6 +62,14 @@ The installer writes config to:
 ```text
 C:\ProgramData\OUTPOST\agent-config.json
 ```
+
+After installation, start the agent:
+
+```powershell
+.\outpost-agent.exe
+```
+
+If the agent cannot register, verify the Organisational Code, PASSCODE/API key, backend URL, and network connection.
 
 ## Uninstall
 
