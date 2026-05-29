@@ -307,8 +307,8 @@ Only commands matching the local allowlist can run. Anything else is rejected an
 # Commit for the release executables
 - `
 git status
-git add agent-op/.github/workflows/windows-release.yml agent-op/README.md agent-op/installer-package/README.md agent-op/scripts/install-agent-package.ps1 agent-op/scripts/uninstall-outpost-agent.ps1
+git add .github/workflows/windows-release.yml README.md installer-package/README.md scripts/install-agent-package.ps1 scripts/uninstall-outpost-agent.ps1
 git commit -m "Update agent installer release package"
-git tag v.1.3
-git push origin main
-git push origin v.1.3`
+git push origin master
+git tag v.1.4
+git push origin v.1.4`
