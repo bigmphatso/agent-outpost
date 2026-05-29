@@ -18,16 +18,17 @@ Open PowerShell in the extracted package folder:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\install-agent-package.ps1 `
   -BackendUrl "https://outpost-listener.vercel.app" `
-  -OrgCode "DEMO-ORG"
+  -OrgCode "DEMO-ORG" `
+  -Passcode "YOUR-PASSCODE"
 ```
 
-If your backend still requires the legacy API key, pass it with `-ApiKey` or enter it when prompted.
+The installer prompts for the Organisational Code and PASSCODE if either value is omitted. `-ApiKey` is still accepted as a legacy alias for `-Passcode`.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\install-agent-package.ps1 `
   -BackendUrl "https://outpost-listener.vercel.app" `
   -OrgCode "DEMO-ORG" `
-  -ApiKey "YOUR-BACKEND-API-KEY"
+  -Passcode "YOUR-PASSCODE"
 ```
 
 ## Silent Install
@@ -36,6 +37,7 @@ powershell -ExecutionPolicy Bypass -File .\install-agent-package.ps1 `
 powershell -ExecutionPolicy Bypass -File .\install-agent-package.ps1 `
   -BackendUrl "https://outpost-listener.vercel.app" `
   -OrgCode "DEMO-ORG" `
+  -Passcode "YOUR-PASSCODE" `
   -PollInterval 30
 ```
 

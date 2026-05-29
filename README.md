@@ -4,7 +4,7 @@ The agent is the lightweight endpoint component installed on every organizationa
 
 ## Responsibilities
 
-- Install with an organization-issued `ORG CODE`.
+- Install with an Organisational Code and PASSCODE.
 - Register the endpoint with the central backend.
 - Collect hardware, operating system, disk, and basic software inventory.
 - Send regular heartbeat updates so the dashboard can show online/offline state.
@@ -15,7 +15,7 @@ The agent is the lightweight endpoint component installed on every organizationa
 ## Folder Structure
 
 - `outpost_agent/main.py` - runtime entrypoint for the installed agent.
-- `outpost_agent/installer.py` - installation/configuration entrypoint that prompts for `ORG CODE`.
+- `outpost_agent/installer.py` - installation/configuration entrypoint that prompts for Organisational Code and PASSCODE.
 - `outpost_agent/config.py` - local config storage and loading.
 - `outpost_agent/client.py` - HTTP client for backend communication.
 - `outpost_agent/local_store.py` - local SQLite outbox for offline buffering and retry.
@@ -26,6 +26,7 @@ The agent is the lightweight endpoint component installed on every organizationa
 - `scripts/install-agent-from-github.ps1` - Windows bootstrap installer for devices that download the agent from GitHub.
 - `scripts/install-agent-release.ps1` - Windows bootstrap installer for GitHub Release `.exe` assets.
 <<<<<<< HEAD
+<<<<<<< HEAD
 - `scripts/install-agent-package.ps1` - installs the bundled Windows release package after download.
 - `scripts/uninstall-outpost-agent.ps1` - removes installed Windows agent files.
 - `installer-package/README.md` - instructions included inside the release installer package.
@@ -33,6 +34,10 @@ The agent is the lightweight endpoint component installed on every organizationa
 - `scripts/install-agent.sh` - Linux setup script with optional systemd service installation.
 - `scripts/install-agent-from-github.sh` - Linux bootstrap installer for devices that download the agent from GitHub.
 >>>>>>> 087d43e537b9ff3fcf6a26325fab9eb127390c65
+=======
+- `scripts/install-agent.sh` - Linux setup script with optional systemd service installation.
+- `scripts/install-agent-from-github.sh` - Linux bootstrap installer for devices that download the agent from GitHub.
+>>>>>>> 0f2986f34979991fa2eb8d96581d6ed7d41d3d61
 - `pyproject.toml` - installable package metadata and command registration.
 - `requirements.txt` - direct runtime dependency list.
 
@@ -48,7 +53,8 @@ cd agent
 The script prompts:
 
 ```text
-ORG CODE:
+ORGANISATIONAL CODE:
+PASSCODE (API):
 ```
 
 After installation, the config is saved to:
@@ -57,7 +63,7 @@ After installation, the config is saved to:
 %PROGRAMDATA%\OUTPOST\agent-config.json
 ```
 
-If the backend requires `OUTPOST_API_KEY`, the installer prompts for the API key without echoing it. The saved config stores it as `api_key_protected`, not `api_key`. On Windows, `api_key_protected` is encrypted with DPAPI for the local machine/user context.
+If the backend requires authentication, the installer prompts for the PASSCODE without echoing it. The saved config stores it as `api_key_protected`, not `api_key`. On Windows, `api_key_protected` is encrypted with DPAPI for the local machine/user context. `-ApiKey` remains available as a legacy alias for `-Passcode`.
 
 The installer also hardens the config directory and file permissions. On Windows, the ACL is restricted to `SYSTEM`, `Administrators`, and the installing user. On Linux/macOS, the directory is set to `700` and the file to `600`.
 
@@ -128,8 +134,8 @@ Invoke-WebRequest `
 
 powershell -ExecutionPolicy Bypass -File $Installer `
   -BackendUrl "https://outpost-listener.vercel.app" `
-  -ApiKey "YOUR-BACKEND-API-KEY" `
   -OrgCode "DEMO-ORG" `
+  -Passcode "YOUR-PASSCODE" `
   -RepoZipUrl "https://github.com/YOUR_GITHUB_ORG/OUTPOST/archive/refs/heads/main.zip"
 ```
 
@@ -177,8 +183,8 @@ Invoke-WebRequest `
 powershell -ExecutionPolicy Bypass -File $Installer `
   -Repo "YOUR_GITHUB_ORG/OUTPOST" `
   -BackendUrl "https://outpost-listener.vercel.app" `
-  -ApiKey "YOUR-BACKEND-API-KEY" `
-  -OrgCode "DEMO-ORG"
+  -OrgCode "DEMO-ORG" `
+  -Passcode "YOUR-PASSCODE"
 ```
 
 For a specific release, pass `-Version "v.1"`.
@@ -188,7 +194,8 @@ You can also download `outpost-agent-installer-windows-x64.zip` from the release
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\install-agent-package.ps1 `
   -BackendUrl "https://outpost-listener.vercel.app" `
-  -OrgCode "DEMO-ORG"
+  -OrgCode "DEMO-ORG" `
+  -Passcode "YOUR-PASSCODE"
 ```
 
 To remove the installed files:
@@ -205,7 +212,7 @@ The installed config stores:
 - `org_code` - organization code used during device registration.
 - `agent_version` - local agent version.
 - `poll_interval_seconds` - heartbeat, health report, and task polling interval.
-- `api_key_protected` - encrypted API key for backend `X-API-Key` authentication when configured.
+- `api_key_protected` - encrypted PASSCODE/API value for backend `X-API-Key` authentication when configured.
 
 The runtime can override installed config values:
 
@@ -219,7 +226,7 @@ If the deployed backend has `OUTPOST_API_KEY` configured, the installed agent mu
 outpost-agent-install `
   --backend https://outpost-listener.vercel.app `
   --org-code DEMO-ORG `
-  --api-key YOUR-BACKEND-API-KEY
+  --passcode YOUR-PASSCODE
 ```
 
 Linux equivalent:
@@ -228,7 +235,7 @@ Linux equivalent:
 outpost-agent-install \
   --backend https://outpost-listener.vercel.app \
   --org-code DEMO-ORG \
-  --api-key YOUR-BACKEND-API-KEY
+  --passcode YOUR-PASSCODE
 ```
 
 Your current config can be checked at:

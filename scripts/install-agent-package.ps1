@@ -1,6 +1,7 @@
 param(
     [string]$BackendUrl = "https://outpost-listener.vercel.app",
     [string]$OrgCode = "",
+    [string]$Passcode = "",
     [string]$ApiKey = "",
     [int]$PollInterval = 30,
     [string]$InstallDir = "",
@@ -50,15 +51,19 @@ if ([string]::IsNullOrWhiteSpace($InstallDir)) {
 }
 
 if ([string]::IsNullOrWhiteSpace($OrgCode)) {
-    $OrgCode = Read-Host "ORG CODE"
+    $OrgCode = Read-Host "ORGANISATIONAL CODE"
 }
 
 if ([string]::IsNullOrWhiteSpace($OrgCode)) {
-    throw "ORG CODE is required."
+    throw "ORGANISATIONAL CODE is required."
 }
 
-if ([string]::IsNullOrWhiteSpace($ApiKey)) {
-    $ApiKey = Read-PlaintextSecret "API KEY (leave blank if backend does not require one)"
+if ([string]::IsNullOrWhiteSpace($Passcode) -and -not [string]::IsNullOrWhiteSpace($ApiKey)) {
+    $Passcode = $ApiKey
+}
+
+if ([string]::IsNullOrWhiteSpace($Passcode)) {
+    $Passcode = Read-PlaintextSecret "PASSCODE (API)"
 }
 
 New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
@@ -77,8 +82,8 @@ $installArgs = @(
     "--poll-interval", "$PollInterval"
 )
 
-if (-not [string]::IsNullOrWhiteSpace($ApiKey)) {
-    $env:OUTPOST_AGENT_API_KEY = $ApiKey
+if (-not [string]::IsNullOrWhiteSpace($Passcode)) {
+    $env:OUTPOST_AGENT_PASSCODE = $Passcode
 }
 
 try {
@@ -90,6 +95,7 @@ try {
 }
 finally {
     Remove-Item Env:\OUTPOST_AGENT_API_KEY -ErrorAction SilentlyContinue
+    Remove-Item Env:\OUTPOST_AGENT_PASSCODE -ErrorAction SilentlyContinue
 }
 
 Write-Host "OUTPOST agent installed to: $InstallDir"
