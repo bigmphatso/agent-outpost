@@ -4,6 +4,7 @@ set -euo pipefail
 REPO_ZIP_URL=""
 BACKEND_URL="https://outpost-listener.vercel.app"
 ORG_CODE=""
+PASSCODE=""
 API_KEY=""
 POLL_INTERVAL="30"
 INSTALL_SERVICE="0"
@@ -17,8 +18,9 @@ Usage: install-agent-from-github.sh --repo-zip-url URL [options]
 Options:
   --repo-zip-url URL      GitHub repository ZIP URL.
   --backend-url URL       Backend API URL.
-  --org-code CODE         Organization code issued from OUTPOST.
-  --api-key KEY           Optional backend API key.
+  --org-code CODE         Organisational code issued from OUTPOST.
+  --passcode PASSCODE     PASSCODE used for authenticated backend calls.
+  --api-key KEY           Legacy alias for --passcode.
   --poll-interval SECONDS Agent polling interval. Default: 30
   --install-service       Install a systemd service.
   --start-agent           Start the systemd service after installation.
@@ -32,6 +34,7 @@ while [[ $# -gt 0 ]]; do
     --repo-zip-url) REPO_ZIP_URL="${2:?}"; shift 2 ;;
     --backend-url) BACKEND_URL="${2:?}"; shift 2 ;;
     --org-code) ORG_CODE="${2:?}"; shift 2 ;;
+    --passcode) PASSCODE="${2:?}"; shift 2 ;;
     --api-key) API_KEY="${2:?}"; shift 2 ;;
     --poll-interval) POLL_INTERVAL="${2:?}"; shift 2 ;;
     --install-service) INSTALL_SERVICE="1"; shift ;;
@@ -80,8 +83,11 @@ ARGS=(--backend-url "$BACKEND_URL" --poll-interval "$POLL_INTERVAL")
 if [[ -n "$ORG_CODE" ]]; then
   ARGS+=(--org-code "$ORG_CODE")
 fi
-if [[ -n "$API_KEY" ]]; then
-  ARGS+=(--api-key "$API_KEY")
+if [[ -z "$PASSCODE" && -n "$API_KEY" ]]; then
+  PASSCODE="$API_KEY"
+fi
+if [[ -n "$PASSCODE" ]]; then
+  ARGS+=(--passcode "$PASSCODE")
 fi
 if [[ "$INSTALL_SERVICE" == "1" ]]; then
   ARGS+=(--install-service --service-user "$SERVICE_USER")

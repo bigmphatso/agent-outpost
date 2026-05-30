@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import argparse
+import getpass
 import random
+import sys
 import time
 from pathlib import Path
 
@@ -12,6 +14,13 @@ from outpost_agent.phase1_device_visibility.inventory import collect_inventory, 
 from outpost_agent.phase2_monitoring_alerts.health import collect_health_report
 from outpost_agent.phase3_remote_management.executor import execute_pending_tasks
 from outpost_agent.registry_intelligence.engine import run_registry_intelligence_scan
+
+
+def prompt_secret_if_interactive(label: str) -> str | None:
+    if not sys.stdin.isatty():
+        return None
+    entered = getpass.getpass(f"{label}: ").strip()
+    return entered or None
 
 
 def register_if_needed(client: BackendClient, config: AgentConfig, config_path: Path | None) -> str:
@@ -53,8 +62,33 @@ def flush_outbox(client: BackendClient, db_path: Path, *, limit: int = 50) -> No
 
 
 def run(config: AgentConfig, config_path: Path | None = None) -> None:
+    if not config.api_key:
+        config.api_key = prompt_secret_if_interactive("PASSCODE (API)")
+        if config.api_key:
+            save_config(config, config_path)
+
+    if not config.api_key:
+        raise SystemExit(
+            "OUTPOST agent PASSCODE is missing. Run outpost-agent-install again and enter the PASSCODE (API), "
+            "or start the agent with --passcode YOUR-PASSCODE."
+        )
+
     client = BackendClient(config.backend_url, api_key=config.api_key)
-    device_id = register_if_needed(client, config, config_path)
+    registration_backoff = 5.0
+    while True:
+        try:
+            device_id = register_if_needed(client, config, config_path)
+            break
+        except KeyboardInterrupt:
+            raise
+        except Exception as exc:
+            print(
+                f"OUTPOST agent could not register with the backend: {exc}. "
+                "Check the Organisational Code, PASSCODE, backend URL, and network connection.",
+                flush=True,
+            )
+            time.sleep(min(registration_backoff, 300.0))
+            registration_backoff *= 2
 
     last_inventory_at = 0.0
     last_registry_at = 0.0
@@ -118,20 +152,26 @@ def parse_args() -> tuple[AgentConfig, Path | None]:
     parser = argparse.ArgumentParser(description="Run the OUTPOST endpoint agent.")
     parser.add_argument("--config", type=Path, help="Path to an installed OUTPOST agent config file.")
     parser.add_argument("--backend", help="Backend API base URL. Overrides installed config when provided.")
-    parser.add_argument("--org-code", help="Organization code issued from the dashboard.")
+    parser.add_argument("--org-code", help="Organisational code issued from the dashboard.")
     parser.add_argument("--activation-code", help="Deprecated alias for --org-code.")
-    parser.add_argument("--api-key", help="Optional API key for authenticated backend calls.")
+    parser.add_argument("--passcode", help="PASSCODE used for authenticated backend calls.")
+    parser.add_argument("--api-key", help="Legacy alias for --passcode.")
     parser.add_argument("--poll-interval", type=int)
     args = parser.parse_args()
 
     if args.config or not (args.backend and (args.org_code or args.activation_code)):
-        config = load_config(args.config)
+        try:
+            config = load_config(args.config)
+        except FileNotFoundError as exc:
+            raise SystemExit(
+                "OUTPOST agent config was not found. Run outpost-agent-install first, then start outpost-agent."
+            ) from exc
         if args.backend:
             config.backend_url = args.backend
         if args.org_code or args.activation_code:
             config.org_code = args.org_code or args.activation_code
-        if args.api_key:
-            config.api_key = args.api_key
+        if args.passcode or args.api_key:
+            config.api_key = args.passcode or args.api_key
         if args.poll_interval is not None:
             config.poll_interval_seconds = args.poll_interval
         return config, args.config
@@ -140,7 +180,7 @@ def parse_args() -> tuple[AgentConfig, Path | None]:
         AgentConfig(
             backend_url=args.backend,
             org_code=args.org_code or args.activation_code,
-            api_key=args.api_key,
+            api_key=args.passcode or args.api_key,
             poll_interval_seconds=args.poll_interval or 30,
         ),
         None,

@@ -1,6 +1,7 @@
 param(
     [string]$BackendUrl = "https://outpost-listener.vercel.app",
     [string]$OrgCode = "",
+    [string]$Passcode = "",
     [string]$ApiKey = "",
     [int]$PollInterval = 30,
     [string]$Repo = "YOUR_GITHUB_ORG/OUTPOST",
@@ -12,18 +13,22 @@ param(
 $ErrorActionPreference = "Stop"
 
 if ([string]::IsNullOrWhiteSpace($OrgCode)) {
-    $OrgCode = Read-Host "ORG CODE"
+    $OrgCode = Read-Host "ORGANISATIONAL CODE"
 }
 
 if ([string]::IsNullOrWhiteSpace($OrgCode)) {
-    throw "ORG CODE is required."
+    throw "ORGANISATIONAL CODE is required."
 }
 
-if ([string]::IsNullOrWhiteSpace($ApiKey)) {
-    $SecureApiKey = Read-Host "API KEY (leave blank if backend does not require one)" -AsSecureString
-    $BSTR = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecureApiKey)
+if ([string]::IsNullOrWhiteSpace($Passcode) -and -not [string]::IsNullOrWhiteSpace($ApiKey)) {
+    $Passcode = $ApiKey
+}
+
+if ([string]::IsNullOrWhiteSpace($Passcode)) {
+    $SecurePasscode = Read-Host "PASSCODE (API)" -AsSecureString
+    $BSTR = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecurePasscode)
     try {
-        $ApiKey = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($BSTR)
+        $Passcode = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($BSTR)
     }
     finally {
         [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)
@@ -52,14 +57,15 @@ $installArgs = @(
     "--poll-interval", "$PollInterval"
 )
 
-if (-not [string]::IsNullOrWhiteSpace($ApiKey)) {
-    $env:OUTPOST_AGENT_API_KEY = $ApiKey
+if (-not [string]::IsNullOrWhiteSpace($Passcode)) {
+    $env:OUTPOST_AGENT_PASSCODE = $Passcode
 }
 
 Write-Host "Writing OUTPOST agent configuration..."
 & $installerExe @installArgs
 $exitCode = $LASTEXITCODE
 Remove-Item Env:\OUTPOST_AGENT_API_KEY -ErrorAction SilentlyContinue
+Remove-Item Env:\OUTPOST_AGENT_PASSCODE -ErrorAction SilentlyContinue
 if ($exitCode -ne 0) {
     throw "OUTPOST agent installer failed with exit code $exitCode."
 }

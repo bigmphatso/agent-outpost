@@ -4,7 +4,7 @@ The agent is the lightweight endpoint component installed on every organizationa
 
 ## Responsibilities
 
-- Install with an organization-issued `ORG CODE`.
+- Install with an Organisational Code and PASSCODE.
 - Register the endpoint with the central backend.
 - Collect hardware, operating system, disk, and basic software inventory.
 - Send regular heartbeat updates so the dashboard can show online/offline state.
@@ -15,7 +15,7 @@ The agent is the lightweight endpoint component installed on every organizationa
 ## Folder Structure
 
 - `outpost_agent/main.py` - runtime entrypoint for the installed agent.
-- `outpost_agent/installer.py` - installation/configuration entrypoint that prompts for `ORG CODE`.
+- `outpost_agent/installer.py` - installation/configuration entrypoint that prompts for Organisational Code and PASSCODE.
 - `outpost_agent/config.py` - local config storage and loading.
 - `outpost_agent/client.py` - HTTP client for backend communication.
 - `outpost_agent/local_store.py` - local SQLite outbox for offline buffering and retry.
@@ -25,8 +25,19 @@ The agent is the lightweight endpoint component installed on every organizationa
 - `scripts/install-agent.ps1` - Windows-friendly setup script.
 - `scripts/install-agent-from-github.ps1` - Windows bootstrap installer for devices that download the agent from GitHub.
 - `scripts/install-agent-release.ps1` - Windows bootstrap installer for GitHub Release `.exe` assets.
+<<<<<<< HEAD
+<<<<<<< HEAD
+- `scripts/install-agent-package.ps1` - installs the bundled Windows release package after download.
+- `scripts/uninstall-outpost-agent.ps1` - removes installed Windows agent files.
+- `installer-package/README.md` - instructions included inside the release installer package.
+=======
 - `scripts/install-agent.sh` - Linux setup script with optional systemd service installation.
 - `scripts/install-agent-from-github.sh` - Linux bootstrap installer for devices that download the agent from GitHub.
+>>>>>>> 087d43e537b9ff3fcf6a26325fab9eb127390c65
+=======
+- `scripts/install-agent.sh` - Linux setup script with optional systemd service installation.
+- `scripts/install-agent-from-github.sh` - Linux bootstrap installer for devices that download the agent from GitHub.
+>>>>>>> 0f2986f34979991fa2eb8d96581d6ed7d41d3d61
 - `pyproject.toml` - installable package metadata and command registration.
 - `requirements.txt` - direct runtime dependency list.
 
@@ -42,7 +53,8 @@ cd agent
 The script prompts:
 
 ```text
-ORG CODE:
+ORGANISATIONAL CODE:
+PASSCODE (API):
 ```
 
 After installation, the config is saved to:
@@ -51,7 +63,7 @@ After installation, the config is saved to:
 %PROGRAMDATA%\OUTPOST\agent-config.json
 ```
 
-If the backend requires `OUTPOST_API_KEY`, the installer prompts for the API key without echoing it. The saved config stores it as `api_key_protected`, not `api_key`. On Windows, `api_key_protected` is encrypted with DPAPI for the local machine/user context.
+If the backend requires authentication, the installer prompts for the PASSCODE without echoing it. The saved config stores it as `api_key_protected`, not `api_key`. On Windows, `api_key_protected` is encrypted with DPAPI for the local machine/user context. `-ApiKey` remains available as a legacy alias for `-Passcode`.
 
 The installer also hardens the config directory and file permissions. On Windows, the ACL is restricted to `SYSTEM`, `Administrators`, and the installing user. On Linux/macOS, the directory is set to `700` and the file to `600`.
 
@@ -122,8 +134,8 @@ Invoke-WebRequest `
 
 powershell -ExecutionPolicy Bypass -File $Installer `
   -BackendUrl "https://outpost-listener.vercel.app" `
-  -ApiKey "YOUR-BACKEND-API-KEY" `
   -OrgCode "DEMO-ORG" `
+  -Passcode "YOUR-PASSCODE" `
   -RepoZipUrl "https://github.com/YOUR_GITHUB_ORG/OUTPOST/archive/refs/heads/main.zip"
 ```
 
@@ -149,6 +161,7 @@ Tagged releases build downloadable Windows executables through GitHub Actions:
 - `outpost-agent.exe` - runs the endpoint agent.
 - `outpost-agent-install.exe` - writes the local agent configuration.
 - `outpost-agent-windows-x64.zip` - bundle containing both executables and `SHA256SUMS.txt`.
+- `outpost-agent-installer-windows-x64.zip` - user-facing installer package with executables, install/uninstall scripts, checksums, README, and release manifest.
 
 To publish a release, push a version tag:
 
@@ -170,11 +183,98 @@ Invoke-WebRequest `
 powershell -ExecutionPolicy Bypass -File $Installer `
   -Repo "YOUR_GITHUB_ORG/OUTPOST" `
   -BackendUrl "https://outpost-listener.vercel.app" `
-  -ApiKey "YOUR-BACKEND-API-KEY" `
-  -OrgCode "DEMO-ORG"
+  -OrgCode "DEMO-ORG" `
+  -Passcode "YOUR-PASSCODE"
 ```
 
 For a specific release, pass `-Version "v.1"`.
+
+You can also download `outpost-agent-installer-windows-x64.zip` from the release page, extract it, and run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\install-agent-package.ps1 `
+  -BackendUrl "https://outpost-listener.vercel.app" `
+  -OrgCode "DEMO-ORG" `
+  -Passcode "YOUR-PASSCODE"
+```
+
+To remove the installed files:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\uninstall-outpost-agent.ps1
+```
+
+## New Windows Device Setup From Zero
+
+Use this flow on a clean Windows endpoint.
+
+### Option 1: Installer Package
+
+1. Download `outpost-agent-installer-windows-x64.zip` from the GitHub release.
+2. Extract the zip to a local folder.
+3. Open PowerShell in the extracted folder.
+4. Run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\install-agent-package.ps1
+```
+
+The installer prompts:
+
+```text
+ORGANISATIONAL CODE:
+PASSCODE (API):
+```
+
+You can also provide both values non-interactively:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\install-agent-package.ps1 `
+  -BackendUrl "https://outpost-listener.vercel.app" `
+  -OrgCode "DEMO-ORG" `
+  -Passcode "YOUR-PASSCODE"
+```
+
+The PASSCODE is the same backend API key value, but the installer presents it as PASSCODE for users.
+
+### Option 2: Direct EXEs
+
+If you download only the two executables:
+
+1. Put `outpost-agent.exe` and `outpost-agent-install.exe` in the same folder.
+2. Run the installer executable first:
+
+```powershell
+.\outpost-agent-install.exe
+```
+
+It prompts for:
+
+```text
+ORGANISATIONAL CODE:
+PASSCODE (API):
+```
+
+The installer writes:
+
+```text
+C:\ProgramData\OUTPOST\agent-config.json
+```
+
+The passcode is stored as `api_key_protected` using Windows DPAPI where available.
+
+3. Start the agent:
+
+```powershell
+.\outpost-agent.exe
+```
+
+If the agent says the config is missing, run `outpost-agent-install.exe` first. If registration fails, check:
+
+- the Organisational Code is correct
+- the PASSCODE/API key matches the deployed backend
+- the backend URL is reachable
+- the device has internet access
 
 ## Runtime Configuration
 
@@ -184,7 +284,7 @@ The installed config stores:
 - `org_code` - organization code used during device registration.
 - `agent_version` - local agent version.
 - `poll_interval_seconds` - heartbeat, health report, and task polling interval.
-- `api_key_protected` - encrypted API key for backend `X-API-Key` authentication when configured.
+- `api_key_protected` - encrypted PASSCODE/API value for backend `X-API-Key` authentication when configured.
 
 The runtime can override installed config values:
 
@@ -198,7 +298,7 @@ If the deployed backend has `OUTPOST_API_KEY` configured, the installed agent mu
 outpost-agent-install `
   --backend https://outpost-listener.vercel.app `
   --org-code DEMO-ORG `
-  --api-key YOUR-BACKEND-API-KEY
+  --passcode YOUR-PASSCODE
 ```
 
 Linux equivalent:
@@ -207,7 +307,7 @@ Linux equivalent:
 outpost-agent-install \
   --backend https://outpost-listener.vercel.app \
   --org-code DEMO-ORG \
-  --api-key YOUR-BACKEND-API-KEY
+  --passcode YOUR-PASSCODE
 ```
 
 Your current config can be checked at:
@@ -282,3 +382,12 @@ Only commands matching the local allowlist can run. Anything else is rejected an
 - Expand Linux systemd hardening and package-manager coverage.
 - Replace remaining Windows placeholder health checks with OS-specific collectors.
 - Add signed agent update support.
+
+# Commit for the release executables
+- `
+git status
+git add .github/workflows/windows-release.yml README.md installer-package/README.md scripts/install-agent-package.ps1 scripts/uninstall-outpost-agent.ps1
+git commit -m "Update agent installer release package"
+git push origin master
+git tag v.1.1
+git push origin v.1.1`

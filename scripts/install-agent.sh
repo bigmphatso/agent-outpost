@@ -3,6 +3,7 @@ set -euo pipefail
 
 BACKEND_URL="https://outpost-listener.vercel.app"
 ORG_CODE=""
+PASSCODE=""
 API_KEY=""
 POLL_INTERVAL="30"
 CONFIG_PATH=""
@@ -16,8 +17,9 @@ Usage: install-agent.sh [options]
 
 Options:
   --backend-url URL       Backend API URL. Default: https://outpost-listener.vercel.app
-  --org-code CODE         Organization code issued from OUTPOST.
-  --api-key KEY           Optional backend API key.
+  --org-code CODE         Organisational code issued from OUTPOST.
+  --passcode PASSCODE     PASSCODE used for authenticated backend calls.
+  --api-key KEY           Legacy alias for --passcode.
   --poll-interval SECONDS Agent polling interval. Default: 30
   --config PATH           Optional config path.
   --install-service       Install a systemd service.
@@ -31,6 +33,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --backend-url) BACKEND_URL="${2:?}"; shift 2 ;;
     --org-code) ORG_CODE="${2:?}"; shift 2 ;;
+    --passcode) PASSCODE="${2:?}"; shift 2 ;;
     --api-key) API_KEY="${2:?}"; shift 2 ;;
     --poll-interval) POLL_INTERVAL="${2:?}"; shift 2 ;;
     --config) CONFIG_PATH="${2:?}"; shift 2 ;;
@@ -53,22 +56,26 @@ cd "$AGENT_ROOT"
 python3 -m pip install -e .
 
 if [[ -z "$ORG_CODE" ]]; then
-  read -r -p "ORG CODE: " ORG_CODE
+  read -r -p "ORGANISATIONAL CODE: " ORG_CODE
 fi
 
 if [[ -z "$ORG_CODE" ]]; then
-  echo "ORG CODE is required." >&2
+  echo "ORGANISATIONAL CODE is required." >&2
   exit 1
 fi
 
-if [[ -z "$API_KEY" ]]; then
-  read -r -s -p "API KEY (leave blank if backend does not require one): " API_KEY
+if [[ -z "$PASSCODE" && -n "$API_KEY" ]]; then
+  PASSCODE="$API_KEY"
+fi
+
+if [[ -z "$PASSCODE" ]]; then
+  read -r -s -p "PASSCODE (API): " PASSCODE
   echo
 fi
 
 INSTALL_ARGS=(--backend "$BACKEND_URL" --org-code "$ORG_CODE" --poll-interval "$POLL_INTERVAL")
-if [[ -n "$API_KEY" ]]; then
-  INSTALL_ARGS+=(--api-key "$API_KEY")
+if [[ -n "$PASSCODE" ]]; then
+  INSTALL_ARGS+=(--passcode "$PASSCODE")
 fi
 if [[ -n "$CONFIG_PATH" ]]; then
   INSTALL_ARGS+=(--config "$CONFIG_PATH")
