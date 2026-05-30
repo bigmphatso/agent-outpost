@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_ZIP_URL=""
+DEFAULT_REPO_ZIP_URL="https://github.com/bigmphatso/agent-outpost/archive/refs/heads/master.zip"
+REPO_ZIP_URL="$DEFAULT_REPO_ZIP_URL"
 BACKEND_URL="https://outpost-listener.vercel.app"
 ORG_CODE=""
 PASSCODE=""
@@ -10,13 +11,15 @@ POLL_INTERVAL="30"
 INSTALL_SERVICE="0"
 START_AGENT="0"
 SERVICE_USER="outpost"
+NO_PASSCODE="0"
+VENV_PATH=""
 
 usage() {
   cat <<'EOF'
-Usage: install-agent-from-github.sh --repo-zip-url URL [options]
+Usage: install-agent-from-github.sh [options]
 
 Options:
-  --repo-zip-url URL      GitHub repository ZIP URL.
+  --repo-zip-url URL      GitHub repository ZIP URL. Default: bigmphatso/agent-outpost master ZIP.
   --backend-url URL       Backend API URL.
   --org-code CODE         Organisational code issued from OUTPOST.
   --passcode PASSCODE     PASSCODE used for authenticated backend calls.
@@ -25,6 +28,8 @@ Options:
   --install-service       Install a systemd service.
   --start-agent           Start the systemd service after installation.
   --service-user USER     User for the service. Default: outpost
+  --no-passcode           Do not prompt for PASSCODE when backend auth is disabled.
+  --venv PATH             Virtualenv path for systemd installs. Default: /opt/outpost-agent/venv
   -h, --help              Show this help.
 EOF
 }
@@ -40,16 +45,12 @@ while [[ $# -gt 0 ]]; do
     --install-service) INSTALL_SERVICE="1"; shift ;;
     --start-agent) START_AGENT="1"; INSTALL_SERVICE="1"; shift ;;
     --service-user) SERVICE_USER="${2:?}"; shift 2 ;;
+    --no-passcode) NO_PASSCODE="1"; shift ;;
+    --venv) VENV_PATH="${2:?}"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown option: $1" >&2; usage; exit 2 ;;
   esac
 done
-
-if [[ -z "$REPO_ZIP_URL" ]]; then
-  echo "--repo-zip-url is required." >&2
-  usage
-  exit 2
-fi
 
 if ! command -v unzip >/dev/null 2>&1; then
   echo "unzip is required." >&2
@@ -64,22 +65,40 @@ trap cleanup EXIT
 
 ZIP_PATH="$WORK_DIR/outpost.zip"
 if command -v curl >/dev/null 2>&1; then
-  curl -fsSL "$REPO_ZIP_URL" -o "$ZIP_PATH"
+  if ! curl -fsSL "$REPO_ZIP_URL" -o "$ZIP_PATH"; then
+    echo "Failed to download OUTPOST agent ZIP: $REPO_ZIP_URL" >&2
+    echo "If this is a private repository, download the installer package instead or provide an authenticated/internal ZIP URL." >&2
+    echo "Default public agent ZIP: $DEFAULT_REPO_ZIP_URL" >&2
+    exit 1
+  fi
 elif command -v wget >/dev/null 2>&1; then
-  wget -q "$REPO_ZIP_URL" -O "$ZIP_PATH"
+  if ! wget -q "$REPO_ZIP_URL" -O "$ZIP_PATH"; then
+    echo "Failed to download OUTPOST agent ZIP: $REPO_ZIP_URL" >&2
+    echo "If this is a private repository, download the installer package instead or provide an authenticated/internal ZIP URL." >&2
+    echo "Default public agent ZIP: $DEFAULT_REPO_ZIP_URL" >&2
+    exit 1
+  fi
 else
   echo "curl or wget is required." >&2
   exit 1
 fi
 
 unzip -q "$ZIP_PATH" -d "$WORK_DIR"
-AGENT_DIR="$(find "$WORK_DIR" -type d \( -name agent-op -o -name agent \) | head -n 1)"
+AGENT_DIR="$(
+  find "$WORK_DIR" -type f -name pyproject.toml -print | while read -r project_file; do
+    project_dir="$(dirname "$project_file")"
+    if [[ -d "$project_dir/outpost_agent" ]]; then
+      printf '%s\n' "$project_dir"
+      break
+    fi
+  done
+)"
 if [[ -z "$AGENT_DIR" ]]; then
-  echo "Could not find agent-op/ or agent/ in repository ZIP." >&2
+  echo "Could not find an OUTPOST agent Python package in the repository ZIP." >&2
   exit 1
 fi
 
-ARGS=(--backend-url "$BACKEND_URL" --poll-interval "$POLL_INTERVAL")
+ARGS=(--backend-url "$BACKEND_URL" --poll-interval "$POLL_INTERVAL" --package-install)
 if [[ -n "$ORG_CODE" ]]; then
   ARGS+=(--org-code "$ORG_CODE")
 fi
@@ -94,6 +113,12 @@ if [[ "$INSTALL_SERVICE" == "1" ]]; then
 fi
 if [[ "$START_AGENT" == "1" ]]; then
   ARGS+=(--start-agent)
+fi
+if [[ "$NO_PASSCODE" == "1" ]]; then
+  ARGS+=(--no-passcode)
+fi
+if [[ -n "$VENV_PATH" ]]; then
+  ARGS+=(--venv "$VENV_PATH")
 fi
 
 bash "$AGENT_DIR/scripts/install-agent.sh" "${ARGS[@]}"

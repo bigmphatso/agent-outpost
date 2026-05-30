@@ -2,6 +2,13 @@
 
 The agent is the lightweight endpoint component installed on every organizational device. It registers the device with the backend, reports inventory and health data, sends heartbeat updates, and polls for approved remote management tasks.
 
+## First-Time Client Setup Guides
+
+Use these guides when a user or client visits the OUTPOST business site and needs step-by-step setup on a new machine:
+
+- `WINDOWS.md` - first-time Windows setup from download to dashboard verification.
+- `LINUX.md` - first-time Linux setup from download to systemd service verification.
+
 ## Responsibilities
 
 - Install with an Organisational Code and PASSCODE.
@@ -25,19 +32,13 @@ The agent is the lightweight endpoint component installed on every organizationa
 - `scripts/install-agent.ps1` - Windows-friendly setup script.
 - `scripts/install-agent-from-github.ps1` - Windows bootstrap installer for devices that download the agent from GitHub.
 - `scripts/install-agent-release.ps1` - Windows bootstrap installer for GitHub Release `.exe` assets.
-<<<<<<< HEAD
-<<<<<<< HEAD
 - `scripts/install-agent-package.ps1` - installs the bundled Windows release package after download.
 - `scripts/uninstall-outpost-agent.ps1` - removes installed Windows agent files.
 - `installer-package/README.md` - instructions included inside the release installer package.
-=======
 - `scripts/install-agent.sh` - Linux setup script with optional systemd service installation.
 - `scripts/install-agent-from-github.sh` - Linux bootstrap installer for devices that download the agent from GitHub.
->>>>>>> 087d43e537b9ff3fcf6a26325fab9eb127390c65
-=======
-- `scripts/install-agent.sh` - Linux setup script with optional systemd service installation.
-- `scripts/install-agent-from-github.sh` - Linux bootstrap installer for devices that download the agent from GitHub.
->>>>>>> 0f2986f34979991fa2eb8d96581d6ed7d41d3d61
+- `WINDOWS.md` - detailed first-time Windows client setup guide.
+- `LINUX.md` - detailed first-time Linux client setup guide.
 - `pyproject.toml` - installable package metadata and command registration.
 - `requirements.txt` - direct runtime dependency list.
 
@@ -129,27 +130,27 @@ After this repository is published to GitHub, Windows devices can install the ag
 ```powershell
 $Installer = "$env:TEMP\install-outpost-agent.ps1"
 Invoke-WebRequest `
-  -Uri "https://raw.githubusercontent.com/YOUR_GITHUB_ORG/OUTPOST/main/agent/scripts/install-agent-from-github.ps1" `
+  -Uri "https://raw.githubusercontent.com/bigmphatso/agent-outpost/master/scripts/install-agent-from-github.ps1" `
   -OutFile $Installer
 
 powershell -ExecutionPolicy Bypass -File $Installer `
   -BackendUrl "https://outpost-listener.vercel.app" `
   -OrgCode "DEMO-ORG" `
   -Passcode "YOUR-PASSCODE" `
-  -RepoZipUrl "https://github.com/YOUR_GITHUB_ORG/OUTPOST/archive/refs/heads/main.zip"
+  -RepoZipUrl "https://github.com/bigmphatso/agent-outpost/archive/refs/heads/master.zip"
 ```
 
 Linux devices can use the equivalent shell bootstrapper:
 
 ```bash
 curl -fsSL \
-  https://raw.githubusercontent.com/YOUR_GITHUB_ORG/OUTPOST/main/agent-op/scripts/install-agent-from-github.sh \
+  https://raw.githubusercontent.com/bigmphatso/agent-outpost/master/scripts/install-agent-from-github.sh \
   -o /tmp/install-outpost-agent.sh
 
 sudo bash /tmp/install-outpost-agent.sh \
   --backend-url https://outpost-listener.vercel.app \
   --org-code DEMO-ORG \
-  --repo-zip-url https://github.com/YOUR_GITHUB_ORG/OUTPOST/archive/refs/heads/main.zip \
+  --passcode YOUR-PASSCODE \
   --install-service \
   --start-agent
 ```

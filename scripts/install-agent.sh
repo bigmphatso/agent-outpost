@@ -10,6 +10,9 @@ CONFIG_PATH=""
 INSTALL_SERVICE="0"
 START_AGENT="0"
 SERVICE_USER="outpost"
+PACKAGE_INSTALL="0"
+NO_PASSCODE="0"
+VENV_PATH=""
 
 usage() {
   cat <<'EOF'
@@ -25,6 +28,9 @@ Options:
   --install-service       Install a systemd service.
   --start-agent           Start the systemd service after installation.
   --service-user USER     User for the service. Default: outpost
+  --package-install       Install a normal package instead of editable source.
+  --no-passcode           Do not prompt for PASSCODE when backend auth is disabled.
+  --venv PATH             Virtualenv path for systemd installs. Default: /opt/outpost-agent/venv
   -h, --help              Show this help.
 EOF
 }
@@ -40,6 +46,9 @@ while [[ $# -gt 0 ]]; do
     --install-service) INSTALL_SERVICE="1"; shift ;;
     --start-agent) START_AGENT="1"; INSTALL_SERVICE="1"; shift ;;
     --service-user) SERVICE_USER="${2:?}"; shift 2 ;;
+    --package-install) PACKAGE_INSTALL="1"; shift ;;
+    --no-passcode) NO_PASSCODE="1"; shift ;;
+    --venv) VENV_PATH="${2:?}"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown option: $1" >&2; usage; exit 2 ;;
   esac
@@ -50,10 +59,28 @@ if ! command -v python3 >/dev/null 2>&1; then
   exit 1
 fi
 
+if [[ "$INSTALL_SERVICE" == "1" && "$(id -u)" -ne 0 ]]; then
+  echo "--install-service requires root. Re-run with sudo." >&2
+  exit 1
+fi
+
 AGENT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$AGENT_ROOT"
 
-python3 -m pip install -e .
+PYTHON_BIN="python3"
+if [[ "$INSTALL_SERVICE" == "1" ]]; then
+  VENV_PATH="${VENV_PATH:-/opt/outpost-agent/venv}"
+  python3 -m venv "$VENV_PATH"
+  PYTHON_BIN="$VENV_PATH/bin/python"
+  "$PYTHON_BIN" -m pip install --upgrade pip
+  PACKAGE_INSTALL="1"
+fi
+
+if [[ "$PACKAGE_INSTALL" == "1" ]]; then
+  "$PYTHON_BIN" -m pip install .
+else
+  "$PYTHON_BIN" -m pip install -e .
+fi
 
 if [[ -z "$ORG_CODE" ]]; then
   read -r -p "ORGANISATIONAL CODE: " ORG_CODE
@@ -68,7 +95,7 @@ if [[ -z "$PASSCODE" && -n "$API_KEY" ]]; then
   PASSCODE="$API_KEY"
 fi
 
-if [[ -z "$PASSCODE" ]]; then
+if [[ -z "$PASSCODE" && "$NO_PASSCODE" != "1" ]]; then
   read -r -s -p "PASSCODE (API): " PASSCODE
   echo
 fi
@@ -81,15 +108,10 @@ if [[ -n "$CONFIG_PATH" ]]; then
   INSTALL_ARGS+=(--config "$CONFIG_PATH")
 fi
 
-outpost-agent-install "${INSTALL_ARGS[@]}"
+"$PYTHON_BIN" -m outpost_agent.installer "${INSTALL_ARGS[@]}"
 EFFECTIVE_CONFIG_PATH="${CONFIG_PATH:-$HOME/.outpost/agent-config.json}"
 
 if [[ "$INSTALL_SERVICE" == "1" ]]; then
-  if [[ "$(id -u)" -ne 0 ]]; then
-    echo "--install-service requires root. Re-run with sudo." >&2
-    exit 1
-  fi
-
   if ! id "$SERVICE_USER" >/dev/null 2>&1; then
     useradd --system --home-dir /var/lib/outpost --create-home --shell /usr/sbin/nologin "$SERVICE_USER"
   fi
@@ -99,7 +121,7 @@ if [[ "$INSTALL_SERVICE" == "1" ]]; then
     install -m 600 -o "$SERVICE_USER" -g "$SERVICE_USER" "$EFFECTIVE_CONFIG_PATH" /var/lib/outpost/agent-config.json
   fi
 
-  OUTPOST_AGENT_BIN="$(command -v outpost-agent)"
+  OUTPOST_AGENT_BIN="$VENV_PATH/bin/outpost-agent"
   cat >/etc/systemd/system/outpost-agent.service <<EOF
 [Unit]
 Description=OUTPOST Endpoint Agent

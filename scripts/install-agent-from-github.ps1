@@ -4,7 +4,7 @@ param(
     [string]$Passcode = "",
     [string]$ApiKey = "",
     [int]$PollInterval = 30,
-    [string]$RepoZipUrl = "https://github.com/YOUR_GITHUB_ORG/OUTPOST/archive/refs/heads/main.zip",
+    [string]$RepoZipUrl = "https://github.com/bigmphatso/agent-outpost/archive/refs/heads/master.zip",
     [switch]$StartAgent
 )
 
@@ -74,17 +74,22 @@ New-Item -ItemType Directory -Path $workRoot, $extractPath -Force | Out-Null
 
 try {
     Write-Host "Downloading OUTPOST agent package..."
-    Invoke-WebRequest -Uri $RepoZipUrl -OutFile $zipPath
+    try {
+        Invoke-WebRequest -Uri $RepoZipUrl -OutFile $zipPath
+    }
+    catch {
+        throw "Failed to download OUTPOST agent ZIP from $RepoZipUrl. If this is a private repository, download the installer package instead or provide an authenticated/internal ZIP URL."
+    }
 
     Write-Host "Extracting package..."
     Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
 
     $agentProject = Get-ChildItem -Path $extractPath -Recurse -Filter pyproject.toml |
-        Where-Object { $_.FullName -like "*\agent\pyproject.toml" } |
+        Where-Object { Test-Path (Join-Path $_.DirectoryName "outpost_agent") } |
         Select-Object -First 1
 
     if (-not $agentProject) {
-        throw "Could not find agent/pyproject.toml in the downloaded package."
+        throw "Could not find an OUTPOST agent Python package in the downloaded package."
     }
 
     $agentRoot = Split-Path -Parent $agentProject.FullName
