@@ -55,6 +55,7 @@ You should see files like:
 ```text
 outpost-agent.exe
 outpost-agent-install.exe
+outpost-agent-service.exe
 install-agent-package.ps1
 uninstall-outpost-agent.ps1
 SHA256SUMS.txt
@@ -128,15 +129,23 @@ api_key_protected
 
 It should not be stored as plaintext `api_key`.
 
-### Step 7: Start The Agent
+### Step 7: Confirm The Service Is Running
 
-From the extracted package folder, run:
+Run the installer from an elevated PowerShell session to install the persistent Windows service. The installer starts the service automatically.
+
+Check it with:
+
+```powershell
+Get-Service OutpostAgent
+```
+
+The service should show `Running`. The agent should keep running after the terminal closes and restart automatically after reboot.
+
+If PowerShell was not elevated, the installer writes configuration and installed files only. In that case, start the agent manually for testing:
 
 ```powershell
 .\outpost-agent.exe
 ```
-
-Leave the PowerShell window open for the first registration test. The agent should register the device, send inventory, send health data, and begin heartbeat updates.
 
 ### Step 8: Verify In The OUTPOST Dashboard
 
@@ -190,6 +199,28 @@ The agent does not run unrestricted shell commands. Remote tasks must match the 
 
 ## Troubleshooting
 
+### The Service Was Not Installed
+
+Open PowerShell as Administrator and re-run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\install-agent-package.ps1
+```
+
+To intentionally install without a service, pass `-NoService`.
+
+### Check The Service
+
+```powershell
+Get-Service OutpostAgent
+```
+
+Restart the service:
+
+```powershell
+Restart-Service OutpostAgent
+```
+
 ### PowerShell Blocks The Script
 
 Run the script with:
@@ -209,7 +240,7 @@ powershell -ExecutionPolicy Bypass -File .\install-agent-package.ps1
 Then start:
 
 ```powershell
-.\outpost-agent.exe
+Start-Service OutpostAgent
 ```
 
 ### Device Does Not Appear In Dashboard
@@ -250,6 +281,7 @@ powershell -ExecutionPolicy Bypass -File .\uninstall-outpost-agent.ps1 -RemoveCo
 Before leaving the client site, confirm:
 
 - The agent starts successfully.
+- `OutpostAgent` is installed and running when setup was run as Administrator.
 - The device appears in the dashboard.
 - Last seen updates within the expected polling interval.
 - Inventory and health data are visible.

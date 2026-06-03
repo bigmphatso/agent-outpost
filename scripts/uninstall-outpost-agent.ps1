@@ -4,6 +4,13 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+$ServiceName = "OutpostAgent"
+
+function Test-IsAdministrator {
+    $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $principal = [Security.Principal.WindowsPrincipal]::new($identity)
+    return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
 
 if ([string]::IsNullOrWhiteSpace($InstallDir)) {
     $localInstall = Join-Path $env:LOCALAPPDATA "OUTPOST\Agent"
@@ -14,6 +21,19 @@ if ([string]::IsNullOrWhiteSpace($InstallDir)) {
     else {
         $InstallDir = $localInstall
     }
+}
+
+$existingService = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+if ($existingService) {
+    if (-not (Test-IsAdministrator)) {
+        throw "OUTPOST Agent service is installed. Re-run this uninstall script from an elevated PowerShell session."
+    }
+    if ($existingService.Status -ne "Stopped") {
+        Stop-Service -Name $ServiceName -Force
+        $existingService.WaitForStatus("Stopped", "00:00:30")
+    }
+    & sc.exe delete $ServiceName | Out-Null
+    Write-Host "Removed OUTPOST Agent service: $ServiceName"
 }
 
 Get-Process outpost-agent -ErrorAction SilentlyContinue | Stop-Process -Force

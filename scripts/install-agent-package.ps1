@@ -5,7 +5,9 @@ param(
     [string]$ApiKey = "",
     [int]$PollInterval = 30,
     [string]$InstallDir = "",
-    [switch]$StartAgent
+    [switch]$StartAgent,
+    [switch]$NoService,
+    [switch]$NoStart
 )
 
 $ErrorActionPreference = "Stop"
@@ -32,6 +34,8 @@ function Read-PlaintextSecret {
 $PackageRoot = Resolve-Path $PSScriptRoot
 $AgentExeSource = Join-Path $PackageRoot "outpost-agent.exe"
 $InstallerExeSource = Join-Path $PackageRoot "outpost-agent-install.exe"
+$ServiceExeSource = Join-Path $PackageRoot "outpost-agent-service.exe"
+$ServiceName = "OutpostAgent"
 
 if (-not (Test-Path $AgentExeSource)) {
     throw "Missing package file: $AgentExeSource"
@@ -39,6 +43,11 @@ if (-not (Test-Path $AgentExeSource)) {
 
 if (-not (Test-Path $InstallerExeSource)) {
     throw "Missing package file: $InstallerExeSource"
+}
+
+$ShouldInstallService = (Test-IsAdministrator) -and (-not $NoService)
+if ($ShouldInstallService -and -not (Test-Path $ServiceExeSource)) {
+    throw "Missing package file: $ServiceExeSource"
 }
 
 if ([string]::IsNullOrWhiteSpace($InstallDir)) {
@@ -66,14 +75,27 @@ if ([string]::IsNullOrWhiteSpace($Passcode)) {
     $Passcode = Read-PlaintextSecret "PASSCODE (API)"
 }
 
+if ($ShouldInstallService) {
+    $existingService = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+    if ($existingService -and $existingService.Status -ne "Stopped") {
+        Write-Host "Stopping existing OUTPOST Agent service..."
+        Stop-Service -Name $ServiceName -Force
+        $existingService.WaitForStatus("Stopped", "00:00:30")
+    }
+}
+
 New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
 
 $AgentExe = Join-Path $InstallDir "outpost-agent.exe"
 $InstallerExe = Join-Path $InstallDir "outpost-agent-install.exe"
+$ServiceExe = Join-Path $InstallDir "outpost-agent-service.exe"
 $UninstallScript = Join-Path $InstallDir "uninstall-outpost-agent.ps1"
 
 Copy-Item -Path $AgentExeSource -Destination $AgentExe -Force
 Copy-Item -Path $InstallerExeSource -Destination $InstallerExe -Force
+if (Test-Path $ServiceExeSource) {
+    Copy-Item -Path $ServiceExeSource -Destination $ServiceExe -Force
+}
 Copy-Item -Path (Join-Path $PackageRoot "uninstall-outpost-agent.ps1") -Destination $UninstallScript -Force
 
 $installArgs = @(
@@ -101,10 +123,32 @@ finally {
 Write-Host "OUTPOST agent installed to: $InstallDir"
 Write-Host "Configuration path: $env:PROGRAMDATA\OUTPOST\agent-config.json"
 
-if ($StartAgent) {
-    Write-Host "Starting OUTPOST agent..."
+if ($ShouldInstallService) {
+    Write-Host "Installing OUTPOST Agent Windows service..."
+    $existingService = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+    if ($existingService) {
+        & sc.exe config $ServiceName binPath= "`"$ServiceExe`"" start= auto | Out-Null
+    }
+    else {
+        New-Service `
+            -Name $ServiceName `
+            -BinaryPathName "`"$ServiceExe`"" `
+            -DisplayName "OUTPOST Agent" `
+            -StartupType Automatic | Out-Null
+    }
+    & sc.exe description $ServiceName "Runs the OUTPOST endpoint monitoring and management agent." | Out-Null
+
+    if (-not $NoStart) {
+        Write-Host "Starting OUTPOST Agent service..."
+        Start-Service -Name $ServiceName
+    }
+    Write-Host "Service installed: $ServiceName"
+}
+elseif ($StartAgent) {
+    Write-Host "Starting OUTPOST agent in the current terminal..."
     & $AgentExe
 }
 else {
-    Write-Host "Start it with: $AgentExe"
+    Write-Host "Service was not installed because this PowerShell session is not elevated or -NoService was passed."
+    Write-Host "Start it manually with: $AgentExe"
 }

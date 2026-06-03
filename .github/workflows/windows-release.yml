@@ -33,6 +33,7 @@ jobs:
         run: |
           python -m PyInstaller --clean --onefile --console --icon assets/Outpost-logo.ico --name outpost-agent outpost_agent/main.py
           python -m PyInstaller --clean --onefile --console --icon assets/Outpost-logo.ico --name outpost-agent-install outpost_agent/installer.py
+          python -m PyInstaller --clean --onefile --console --icon assets/Outpost-logo.ico --name outpost-agent-service outpost_agent/windows_service.py
 
       - name: Create installer package
         shell: pwsh
@@ -42,6 +43,7 @@ jobs:
 
           Copy-Item dist\outpost-agent.exe $packageDir\
           Copy-Item dist\outpost-agent-install.exe $packageDir\
+          Copy-Item dist\outpost-agent-service.exe $packageDir\
           Copy-Item scripts\install-agent-package.ps1 $packageDir\
           Copy-Item scripts\uninstall-outpost-agent.ps1 $packageDir\
           Copy-Item installer-package\README.md $packageDir\README.md
@@ -56,6 +58,7 @@ jobs:
             files = @(
               "outpost-agent.exe",
               "outpost-agent-install.exe",
+              "outpost-agent-service.exe",
               "install-agent-package.ps1",
               "uninstall-outpost-agent.ps1",
               "README.md"
@@ -63,16 +66,16 @@ jobs:
           }
           $manifest | ConvertTo-Json -Depth 4 | Set-Content -Path "$packageDir\release-manifest.json" -Encoding ascii
 
-          Get-FileHash dist\outpost-agent.exe, dist\outpost-agent-install.exe -Algorithm SHA256 |
+          Get-FileHash dist\outpost-agent.exe, dist\outpost-agent-install.exe, dist\outpost-agent-service.exe -Algorithm SHA256 |
             ForEach-Object { "$($_.Hash)  $(Split-Path -Leaf $_.Path)" } |
             Set-Content -Path dist\SHA256SUMS.txt -Encoding ascii
 
-          Get-FileHash "$packageDir\outpost-agent.exe", "$packageDir\outpost-agent-install.exe", "$packageDir\install-agent-package.ps1", "$packageDir\uninstall-outpost-agent.ps1", "$packageDir\README.md", "$packageDir\release-manifest.json" -Algorithm SHA256 |
+          Get-FileHash "$packageDir\outpost-agent.exe", "$packageDir\outpost-agent-install.exe", "$packageDir\outpost-agent-service.exe", "$packageDir\install-agent-package.ps1", "$packageDir\uninstall-outpost-agent.ps1", "$packageDir\README.md", "$packageDir\release-manifest.json" -Algorithm SHA256 |
             ForEach-Object { "$($_.Hash)  $(Split-Path -Leaf $_.Path)" } |
             Set-Content -Path "$packageDir\SHA256SUMS.txt" -Encoding ascii
 
           Compress-Archive `
-            -Path dist\outpost-agent.exe, dist\outpost-agent-install.exe, dist\SHA256SUMS.txt `
+            -Path dist\outpost-agent.exe, dist\outpost-agent-install.exe, dist\outpost-agent-service.exe, dist\SHA256SUMS.txt `
             -DestinationPath outpost-agent-windows-x64.zip `
             -Force
 
@@ -88,6 +91,7 @@ jobs:
           path: |
             dist/outpost-agent.exe
             dist/outpost-agent-install.exe
+            dist/outpost-agent-service.exe
             dist/SHA256SUMS.txt
             outpost-agent-windows-x64.zip
             outpost-agent-installer-windows-x64.zip
@@ -99,6 +103,7 @@ jobs:
           files: |
             dist/outpost-agent.exe
             dist/outpost-agent-install.exe
+            dist/outpost-agent-service.exe
             dist/SHA256SUMS.txt
             outpost-agent-windows-x64.zip
             outpost-agent-installer-windows-x64.zip

@@ -161,7 +161,8 @@ Tagged releases build downloadable Windows executables through GitHub Actions:
 
 - `outpost-agent.exe` - runs the endpoint agent.
 - `outpost-agent-install.exe` - writes the local agent configuration.
-- `outpost-agent-windows-x64.zip` - bundle containing both executables and `SHA256SUMS.txt`.
+- `outpost-agent-service.exe` - Windows service wrapper that keeps the agent running persistently.
+- `outpost-agent-windows-x64.zip` - bundle containing the Windows executables and `SHA256SUMS.txt`.
 - `outpost-agent-installer-windows-x64.zip` - user-facing installer package with executables, install/uninstall scripts, checksums, README, and release manifest.
 
 To publish a release, push a version tag:
@@ -198,6 +199,8 @@ powershell -ExecutionPolicy Bypass -File .\install-agent-package.ps1 `
   -OrgCode "DEMO-ORG" `
   -Passcode "YOUR-PASSCODE"
 ```
+
+When run from an elevated PowerShell session, the installer registers and starts the `OutpostAgent` Windows service with automatic startup. Pass `-NoService` to skip service installation or `-NoStart` to install the service without starting it immediately.
 
 To remove the installed files:
 
@@ -264,11 +267,13 @@ C:\ProgramData\OUTPOST\agent-config.json
 
 The passcode is stored as `api_key_protected` using Windows DPAPI where available.
 
-3. Start the agent:
+3. For one-time/manual testing, start the agent:
 
 ```powershell
 .\outpost-agent.exe
 ```
+
+For persistence, use the installer package so `outpost-agent-service.exe` is installed as the `OutpostAgent` Windows service.
 
 If the agent says the config is missing, run `outpost-agent-install.exe` first. If registration fails, check:
 
@@ -372,14 +377,12 @@ Only commands matching the local allowlist can run. Anything else is rejected an
 
 ## Current Limitations
 
-- Windows service registration is not implemented yet.
 - Windows antivirus and update checks are placeholder values.
 - Device identity is created fresh on each registration; persistent device identity should be added before production use.
 
 ## Next Steps
 
 - Add persistent `device_id` storage after first registration.
-- Add Windows service installation.
 - Expand Linux systemd hardening and package-manager coverage.
 - Replace remaining Windows placeholder health checks with OS-specific collectors.
 - Add signed agent update support.

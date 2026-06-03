@@ -8,7 +8,8 @@ version = "0.1.0"
 description = "OUTPOST endpoint monitoring and management agent."
 requires-python = ">=3.11"
 dependencies = [
-  "requests==2.32.3"
+  "requests==2.32.3",
+  "pywin32==311; platform_system == 'Windows'"
 ]
 
 [project.optional-dependencies]
@@ -19,6 +20,7 @@ build = [
 [project.scripts]
 outpost-agent = "outpost_agent.main:main"
 outpost-agent-install = "outpost_agent.installer:main"
+outpost-agent-service = "outpost_agent.windows_service:main"
 
 [tool.setuptools.packages.find]
 include = ["outpost_agent*"]

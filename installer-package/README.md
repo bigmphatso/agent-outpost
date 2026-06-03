@@ -6,6 +6,7 @@ This folder is included in the Windows release package.
 
 - `outpost-agent.exe` - runs the endpoint agent.
 - `outpost-agent-install.exe` - writes and hardens local configuration.
+- `outpost-agent-service.exe` - Windows service wrapper for persistent background operation.
 - `install-agent-package.ps1` - installs the bundled executables on this machine.
 - `uninstall-outpost-agent.ps1` - removes installed agent files.
 - `SHA256SUMS.txt` - checksums for release verification.
@@ -23,6 +24,8 @@ powershell -ExecutionPolicy Bypass -File .\install-agent-package.ps1 `
 ```
 
 The installer prompts for the Organisational Code and PASSCODE if either value is omitted. `-ApiKey` is still accepted as a legacy alias for `-Passcode`.
+
+Run PowerShell as Administrator to install the persistent `OutpostAgent` Windows service. The service starts automatically by default and is configured for automatic startup after reboot.
 
 The PASSCODE is the same backend API key value. It is masked as PASSCODE in the installer UX and stored through the existing protected API key path.
 
@@ -63,11 +66,13 @@ The installer writes config to:
 C:\ProgramData\OUTPOST\agent-config.json
 ```
 
-After installation, start the agent:
+Check service status:
 
 ```powershell
-.\outpost-agent.exe
+Get-Service OutpostAgent
 ```
+
+If the script was run without administrator privileges, it installs the files and config only. Start the agent manually with `.\outpost-agent.exe`, or re-run the installer in an elevated PowerShell session to install the service. Pass `-NoService` to intentionally skip service installation.
 
 If the agent cannot register, verify the Organisational Code, PASSCODE/API key, backend URL, and network connection.
 
