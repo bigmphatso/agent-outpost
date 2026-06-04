@@ -383,15 +383,15 @@ def collect_profile(org_code: str, agent_version: str) -> dict[str, Any]:
 
 
 def registration_payload(org_code: str, agent_version: str) -> dict[str, Any]:
-    profile = collect_profile(org_code, agent_version)
+    hostname = socket.gethostname()
+    os_name = f"{platform.system()} {platform.release()}".strip()
+    serial_number = linux_serial_number() if is_linux() else _windows_serial_number()
     return {
         "org_code": org_code,
-        "hostname": profile["hostname"],
-        "serial_number": profile["serial_number"],
-        "os_name": profile["os_name"],
+        "hostname": hostname,
+        "serial_number": serial_number,
+        "os_name": os_name,
         "agent_version": agent_version,
-        "hardware_fingerprint": profile["hardware_fingerprint"],
-        "hardware_fingerprint_version": 1,
     }
 
 

@@ -354,7 +354,7 @@ The SQLite outbox stores:
 - registry telemetry events
 - registry snapshots
 
-On Linux, inventory includes distro/kernel details, SMBIOS serial data when exposed by the host, hashed hardware fingerprint components, memory/disk totals, and a capped package inventory. Health includes pending update counts, ClamAV presence/status when available, signature age, disk free percentage, and a small suspicious-process heuristic for executables running from temporary directories.
+On Linux, inventory includes distro/kernel details, SMBIOS serial data when exposed by the host, memory/disk totals, and a capped package inventory. Health includes pending update counts, ClamAV presence/status when available, signature age, disk free percentage, and a small suspicious-process heuristic for executables running from temporary directories.
 
 When the internet or backend is unavailable, the agent keeps the records locally. On later ticks, it retries the oldest queued records first and deletes each record only after the backend accepts it.
 
@@ -368,6 +368,8 @@ The agent currently calls:
 - `POST /api/v1/devices/{device_id}/health`
 - `GET /api/v1/remote/devices/{device_id}/tasks`
 - `POST /api/v1/remote/devices/{device_id}/tasks/{task_id}/result`
+
+Device enrollment is lightweight: registration uses org code, hostname, OS name, and agent version first, then fills in the rest of the profile on later syncs. Hardware fingerprint matching is not required for enrollment.
 
 ## Remote Task Safety
 

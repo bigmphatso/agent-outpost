@@ -29,14 +29,6 @@ def prompt_secret_if_interactive(label: str) -> str | None:
 
 
 def register_if_needed(client: BackendClient, config: AgentConfig, config_path: Path | None) -> str:
-    if config.device_id:
-        try:
-            existing = client.get(f"/api/v1/devices/{config.device_id}")
-            if isinstance(existing, dict) and existing.get("device_id") == config.device_id:
-                return config.device_id
-        except Exception:
-            pass
-
     device = client.post(
         "/api/v1/devices/register",
         {**registration_payload(config.org_code, config.agent_version), "device_id": config.device_id},
