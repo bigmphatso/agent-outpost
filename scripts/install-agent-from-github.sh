@@ -3,7 +3,7 @@ set -euo pipefail
 
 DEFAULT_REPO_ZIP_URL="https://github.com/bigmphatso/agent-outpost/archive/refs/heads/master.zip"
 REPO_ZIP_URL="$DEFAULT_REPO_ZIP_URL"
-BACKEND_URL="https://outpost-listener.vercel.app"
+BACKEND_URL="https://backend-outpost.onrender.com"
 ORG_CODE=""
 PASSCODE=""
 API_KEY=""

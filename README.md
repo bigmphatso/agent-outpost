@@ -105,7 +105,7 @@ Install the Python package and write the endpoint configuration:
 ```bash
 cd agent-op
 ./scripts/install-agent.sh \
-  --backend-url https://outpost-listener.vercel.app \
+  --backend-url https://backend-outpost.onrender.com \
   --org-code DEMO-ORG
 outpost-agent
 ```
@@ -115,7 +115,7 @@ Install and start the Linux systemd service:
 ```bash
 cd agent-op
 sudo ./scripts/install-agent.sh \
-  --backend-url https://outpost-listener.vercel.app \
+  --backend-url https://backend-outpost.onrender.com \
   --org-code DEMO-ORG \
   --install-service \
   --start-agent
@@ -134,7 +134,7 @@ Invoke-WebRequest `
   -OutFile $Installer
 
 powershell -ExecutionPolicy Bypass -File $Installer `
-  -BackendUrl "https://outpost-listener.vercel.app" `
+  -BackendUrl "https://backend-outpost.onrender.com" `
   -OrgCode "DEMO-ORG" `
   -Passcode "YOUR-PASSCODE" `
   -RepoZipUrl "https://github.com/bigmphatso/agent-outpost/archive/refs/heads/master.zip"
@@ -148,7 +148,7 @@ curl -fsSL \
   -o /tmp/install-outpost-agent.sh
 
 sudo bash /tmp/install-outpost-agent.sh \
-  --backend-url https://outpost-listener.vercel.app \
+  --backend-url https://backend-outpost.onrender.com \
   --org-code DEMO-ORG \
   --passcode YOUR-PASSCODE \
   --install-service \
@@ -184,7 +184,7 @@ Invoke-WebRequest `
 
 powershell -ExecutionPolicy Bypass -File $Installer `
   -Repo "YOUR_GITHUB_ORG/OUTPOST" `
-  -BackendUrl "https://outpost-listener.vercel.app" `
+  -BackendUrl "https://backend-outpost.onrender.com" `
   -OrgCode "DEMO-ORG" `
   -Passcode "YOUR-PASSCODE"
 ```
@@ -195,7 +195,7 @@ You can also download `outpost-agent-installer-windows-x64.zip` from the release
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\install-agent-package.ps1 `
-  -BackendUrl "https://outpost-listener.vercel.app" `
+  -BackendUrl "https://backend-outpost.onrender.com" `
   -OrgCode "DEMO-ORG" `
   -Passcode "YOUR-PASSCODE"
 ```
@@ -234,7 +234,7 @@ You can also provide both values non-interactively:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\install-agent-package.ps1 `
-  -BackendUrl "https://outpost-listener.vercel.app" `
+  -BackendUrl "https://backend-outpost.onrender.com" `
   -OrgCode "DEMO-ORG" `
   -Passcode "YOUR-PASSCODE"
 ```
@@ -302,7 +302,7 @@ If the deployed backend has `OUTPOST_API_KEY` configured, the installed agent mu
 
 ```powershell
 outpost-agent-install `
-  --backend https://outpost-listener.vercel.app `
+  --backend https://backend-outpost.onrender.com `
   --org-code DEMO-ORG `
   --passcode YOUR-PASSCODE
 ```
@@ -311,7 +311,7 @@ Linux equivalent:
 
 ```bash
 outpost-agent-install \
-  --backend https://outpost-listener.vercel.app \
+  --backend https://backend-outpost.onrender.com \
   --org-code DEMO-ORG \
   --passcode YOUR-PASSCODE
 ```
@@ -327,7 +327,7 @@ If `device_id` is `null`, the agent has not successfully registered yet.
 By default, new installs communicate with the deployed BACKEND-OUTPOST listener:
 
 ```text
-https://outpost-listener.vercel.app
+https://backend-outpost.onrender.com
 ```
 
 ## Local SQLite Outbox
@@ -354,7 +354,7 @@ The SQLite outbox stores:
 - registry telemetry events
 - registry snapshots
 
-On Linux, inventory includes distro/kernel details, SMBIOS serial data when exposed by the host, hashed hardware fingerprint components, memory/disk totals, and a capped package inventory. Health includes pending update counts, ClamAV presence/status when available, signature age, disk free percentage, and a small suspicious-process heuristic for executables running from temporary directories.
+On Linux, inventory includes distro/kernel details, SMBIOS serial data when exposed by the host, memory/disk totals, and a capped package inventory. Health includes pending update counts, ClamAV presence/status when available, signature age, disk free percentage, and a small suspicious-process heuristic for executables running from temporary directories.
 
 When the internet or backend is unavailable, the agent keeps the records locally. On later ticks, it retries the oldest queued records first and deletes each record only after the backend accepts it.
 
@@ -368,6 +368,8 @@ The agent currently calls:
 - `POST /api/v1/devices/{device_id}/health`
 - `GET /api/v1/remote/devices/{device_id}/tasks`
 - `POST /api/v1/remote/devices/{device_id}/tasks/{task_id}/result`
+
+Device enrollment is lightweight: registration uses org code, hostname, OS name, and agent version first, then fills in the rest of the profile on later syncs. Hardware fingerprint matching is not required for enrollment.
 
 ## Remote Task Safety
 

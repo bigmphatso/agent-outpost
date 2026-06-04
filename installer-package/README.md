@@ -18,7 +18,7 @@ Open PowerShell in the extracted package folder:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\install-agent-package.ps1 `
-  -BackendUrl "https://outpost-listener.vercel.app" `
+  -BackendUrl "https://backend-outpost.onrender.com" `
   -OrgCode "DEMO-ORG" `
   -Passcode "YOUR-PASSCODE"
 ```
@@ -44,7 +44,7 @@ PASSCODE (API):
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\install-agent-package.ps1 `
-  -BackendUrl "https://outpost-listener.vercel.app" `
+  -BackendUrl "https://backend-outpost.onrender.com" `
   -OrgCode "DEMO-ORG" `
   -Passcode "YOUR-PASSCODE"
 ```
@@ -53,7 +53,7 @@ powershell -ExecutionPolicy Bypass -File .\install-agent-package.ps1 `
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\install-agent-package.ps1 `
-  -BackendUrl "https://outpost-listener.vercel.app" `
+  -BackendUrl "https://backend-outpost.onrender.com" `
   -OrgCode "DEMO-ORG" `
   -Passcode "YOUR-PASSCODE" `
   -PollInterval 30

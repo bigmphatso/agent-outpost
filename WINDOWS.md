@@ -12,7 +12,7 @@ Before starting, the client should have:
 - The OUTPOST backend URL, usually:
 
 ```text
-https://outpost-listener.vercel.app
+https://backend-outpost.onrender.com
 ```
 
 - The organization’s `ORGANISATIONAL CODE`.
@@ -101,7 +101,7 @@ For IT staff or repeat installs, run:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\install-agent-package.ps1 `
-  -BackendUrl "https://outpost-listener.vercel.app" `
+  -BackendUrl "https://backend-outpost.onrender.com" `
   -OrgCode "DEMO-ORG" `
   -Passcode "YOUR-PASSCODE" `
   -PollInterval 30
@@ -111,7 +111,7 @@ Replace:
 
 - `DEMO-ORG` with the real organisational code.
 - `YOUR-PASSCODE` with the real passcode.
-- `https://outpost-listener.vercel.app` with the customer backend URL if different.
+- `https://backend-outpost.onrender.com` with the customer backend URL if different.
 
 ### Step 6: Confirm The Install Location
 
@@ -173,7 +173,7 @@ Invoke-WebRequest `
 
 powershell -ExecutionPolicy Bypass -File $Installer `
   -Repo "YOUR_GITHUB_ORG/OUTPOST" `
-  -BackendUrl "https://outpost-listener.vercel.app" `
+  -BackendUrl "https://backend-outpost.onrender.com" `
   -OrgCode "DEMO-ORG" `
   -Passcode "YOUR-PASSCODE"
 ```

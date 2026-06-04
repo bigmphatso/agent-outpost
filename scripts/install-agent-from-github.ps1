@@ -1,5 +1,5 @@
 param(
-    [string]$BackendUrl = "https://outpost-listener.vercel.app",
+    [string]$BackendUrl = "https://backend-outpost.onrender.com",
     [string]$OrgCode = "",
     [string]$Passcode = "",
     [string]$ApiKey = "",
