@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import getpass
+import logging
 import random
 import sys
 import time
@@ -16,6 +17,8 @@ from outpost_agent.phase2_monitoring_alerts.health import collect_health_report
 from outpost_agent.phase3_remote_management.executor import execute_pending_tasks
 from outpost_agent.registry_intelligence.engine import run_registry_intelligence_scan
 from outpost_agent.telemetry_state import diff_software, load_state, save_state, stable_hash, state_path
+
+logger = logging.getLogger(__name__)
 
 
 def prompt_secret_if_interactive(label: str) -> str | None:
@@ -59,6 +62,7 @@ def flush_outbox(client: BackendClient, db_path: Path, *, limit: int = 50) -> No
             client.post(str(item["path"]), item["payload"])
             mark_sent(db_path, request_id)
         except Exception as exc:
+            logger.warning("OUTPOST agent outbox request %s failed: %s", request_id, exc)
             record_failure(db_path, request_id, str(exc))
             break
 
@@ -79,7 +83,9 @@ def run(config: AgentConfig, config_path: Path | None = None) -> None:
     registration_backoff = 5.0
     while True:
         try:
+            logger.info("OUTPOST agent attempting registration against %s", config.backend_url)
             device_id = register_if_needed(client, config, config_path)
+            logger.info("OUTPOST agent registered as %s", device_id)
             break
         except KeyboardInterrupt:
             raise
@@ -108,6 +114,7 @@ def run(config: AgentConfig, config_path: Path | None = None) -> None:
         try:
             now = time.time()
             inventory_payload = collect_inventory(config.org_code, config.agent_version)
+            logger.debug("OUTPOST agent collected inventory payload for %s", device_id)
             inventory_hash = stable_hash(inventory_payload)
             previous_inventory_hash = str(telemetry_state.get("inventory_hash") or "")
             if inventory_hash != previous_inventory_hash or now - last_inventory_at >= 6 * 60 * 60:
@@ -186,6 +193,7 @@ def run(config: AgentConfig, config_path: Path | None = None) -> None:
                         }
                     )
                 queue_post(local_db_path, f"/api/v1/devices/{device_id}/inventory", inventory_payload)
+                logger.info("OUTPOST agent queued inventory update for %s", device_id)
                 telemetry_state["inventory_hash"] = inventory_hash
                 telemetry_state["profile_hash"] = stable_hash(inventory_payload.get("profile") or {})
                 telemetry_state["profile"] = inventory_payload.get("profile") or {}
@@ -204,6 +212,7 @@ def run(config: AgentConfig, config_path: Path | None = None) -> None:
                         "/api/v1/telemetry/events",
                         {"device_id": device_id, "events": registry_scan["events"]},
                     )
+                    logger.info("OUTPOST agent queued %s registry events for %s", len(registry_scan["events"]), device_id)
                 queue_post(
                     local_db_path,
                     "/api/v1/telemetry/registry-snapshots",
@@ -214,13 +223,16 @@ def run(config: AgentConfig, config_path: Path | None = None) -> None:
                         "snapshot": registry_scan["snapshot"],
                     },
                 )
+                logger.debug("OUTPOST agent queued registry snapshot for %s", device_id)
                 last_registry_at = now
 
             health_report = collect_health_report()
             telemetry_payload = health_report.pop("telemetry", {})
+            logger.debug("OUTPOST agent collected health report for %s", device_id)
             health_hash = str(health_report.get("state_hash") or stable_hash(health_report))
             if health_hash != str(telemetry_state.get("health_hash") or "") or now - last_health_at >= 5 * 60:
                 queue_post(local_db_path, f"/api/v1/devices/{device_id}/health", health_report)
+                logger.info("OUTPOST agent queued health update for %s", device_id)
                 telemetry_state["health_hash"] = health_hash
                 telemetry_state["findings"] = list(health_report.get("findings") or [])
                 last_health_at = now
@@ -231,11 +243,12 @@ def run(config: AgentConfig, config_path: Path | None = None) -> None:
                     local_db_path,
                     f"/api/v1/devices/{device_id}/telemetry",
                     {
-                    "telemetry": telemetry_payload,
-                    "state_hash": telemetry_hash,
+                        "telemetry": telemetry_payload,
+                        "state_hash": telemetry_hash,
                         "collected_at": datetime.now(timezone.utc).isoformat(),
                     },
                 )
+                logger.info("OUTPOST agent queued telemetry reading for %s", device_id)
                 telemetry_state["telemetry_hash"] = telemetry_hash
                 last_telemetry_at = now
 
@@ -248,6 +261,7 @@ def run(config: AgentConfig, config_path: Path | None = None) -> None:
                     "health": health_report,
                 },
             )
+            logger.debug("OUTPOST agent queued heartbeat for %s", device_id)
             flush_outbox(client, local_db_path)
 
             try:
@@ -306,6 +320,7 @@ def parse_args() -> tuple[AgentConfig, Path | None]:
 
 
 def main() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     config, config_path = parse_args()
     run(config, config_path)
 
