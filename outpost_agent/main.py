@@ -11,7 +11,7 @@ from pathlib import Path
 
 from outpost_agent.client import BackendClient
 from outpost_agent.config import AgentConfig, default_config_dir, load_config, save_config
-from outpost_agent.local_store import enqueue_post, mark_sent, read_outbound_batch, record_failure
+from outpost_agent.local_store import clear_outbound_requests, enqueue_post, mark_sent, read_outbound_batch, record_failure
 from outpost_agent.phase1_device_visibility.inventory import collect_inventory, registration_payload
 from outpost_agent.phase2_monitoring_alerts.health import collect_health_report
 from outpost_agent.phase3_remote_management.executor import execute_pending_tasks
@@ -54,6 +54,16 @@ def flush_outbox(client: BackendClient, db_path: Path, *, limit: int = 50) -> No
             client.post(str(item["path"]), item["payload"])
             mark_sent(db_path, request_id)
         except Exception as exc:
+            error_text = str(exc)
+            path_text = str(item["path"])
+            if "404 Client Error" in error_text and path_text.startswith("/api/v1/devices/"):
+                logger.warning(
+                    "OUTPOST agent dropped stale device-scoped outbox request %s after device registration changed: %s",
+                    request_id,
+                    path_text,
+                )
+                mark_sent(db_path, request_id)
+                continue
             logger.warning("OUTPOST agent outbox request %s failed: %s", request_id, exc)
             record_failure(db_path, request_id, str(exc))
             break
@@ -72,11 +82,24 @@ def run(config: AgentConfig, config_path: Path | None = None) -> None:
         )
 
     client = BackendClient(config.backend_url, api_key=config.api_key)
+    data_dir = default_config_dir()
+    telemetry_state_file = state_path(data_dir)
+    telemetry_state = load_state(telemetry_state_file)
+    registry_snapshot_path = data_dir / "registry-snapshot.json"
+    local_db_path = data_dir / "agent-state.sqlite3"
     registration_backoff = 5.0
     while True:
         try:
             logger.info("OUTPOST agent attempting registration against %s", config.backend_url)
+            previous_device_id = config.device_id
             device_id = register_if_needed(client, config, config_path)
+            if previous_device_id and previous_device_id != device_id:
+                clear_outbound_requests(local_db_path)
+                logger.info(
+                    "OUTPOST agent cleared stale outbox entries after device id changed from %s to %s",
+                    previous_device_id,
+                    device_id,
+                )
             logger.info("OUTPOST agent registered as %s", device_id)
             break
         except KeyboardInterrupt:
@@ -95,12 +118,6 @@ def run(config: AgentConfig, config_path: Path | None = None) -> None:
     last_telemetry_at = 0.0
     last_registry_at = 0.0
     backoff_seconds = 1.0
-
-    data_dir = default_config_dir()
-    telemetry_state_file = state_path(data_dir)
-    telemetry_state = load_state(telemetry_state_file)
-    registry_snapshot_path = data_dir / "registry-snapshot.json"
-    local_db_path = data_dir / "agent-state.sqlite3"
 
     while True:
         try:

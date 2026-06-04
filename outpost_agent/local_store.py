@@ -102,6 +102,12 @@ def record_failure(db_path: Path, request_id: int, error: str) -> None:
         connection.commit()
 
 
+def clear_outbound_requests(db_path: Path) -> None:
+    with closing(connect(db_path)) as connection:
+        connection.execute("DELETE FROM outbound_requests")
+        connection.commit()
+
+
 def pending_count(db_path: Path) -> int:
     with closing(connect(db_path)) as connection:
         row = connection.execute("SELECT COUNT(*) AS total FROM outbound_requests").fetchone()
