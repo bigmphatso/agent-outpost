@@ -14,7 +14,7 @@ Before starting, the client should have:
 - The OUTPOST backend URL, usually:
 
 ```text
-https://outpost-listener.vercel.app
+https://backend-outpost.onrender.com
 ```
 
 - The organization’s `ORGANISATIONAL CODE`.
@@ -70,7 +70,7 @@ Run:
 
 ```bash
 sudo ./install-outpost-agent.sh \
-  --backend-url "https://outpost-listener.vercel.app" \
+  --backend-url "https://backend-outpost.onrender.com" \
   --org-code "DEMO-ORG" \
   --install-service \
   --start-agent
@@ -79,7 +79,7 @@ sudo ./install-outpost-agent.sh \
 Replace:
 
 - `DEMO-ORG` with the real organisational code.
-- `https://outpost-listener.vercel.app` with the customer backend URL if different.
+- `https://backend-outpost.onrender.com` with the customer backend URL if different.
 
 If the passcode is not provided on the command line, the installer prompts:
 
@@ -101,7 +101,7 @@ For IT staff or repeat installs, pass all values:
 
 ```bash
 sudo ./install-outpost-agent.sh \
-  --backend-url "https://outpost-listener.vercel.app" \
+  --backend-url "https://backend-outpost.onrender.com" \
   --org-code "DEMO-ORG" \
   --passcode "OUTPOST_API_KEY@2000" \
   --poll-interval 30 \
@@ -212,7 +212,7 @@ curl -fsSL \
   -o /tmp/install-outpost-agent.sh
 
 sudo bash /tmp/install-outpost-agent.sh \
-  --backend-url "https://outpost-listener.vercel.app" \
+  --backend-url "https://backend-outpost.onrender.com" \
   --org-code "DEMO-ORG" \
   --passcode "YOUR-PASSCODE" \
   --install-service \
@@ -316,7 +316,7 @@ Repair from the local repository:
 cd /home/hunter/Documents/reign/OUTPOST-SRC/agent-op
 python3 -m pip uninstall -y outpost-agent
 ./scripts/install-agent.sh \
-  --backend-url "https://outpost-listener.vercel.app" \
+  --backend-url "https://backend-outpost.onrender.com" \
   --org-code "DEMO-ORG" \
   --package-install
 ```
@@ -327,7 +327,7 @@ For a boot-time service, run the repair with `sudo` and service flags:
 cd /home/hunter/Documents/reign/OUTPOST-SRC/agent-op
 sudo python3 -m pip uninstall -y outpost-agent
 sudo ./scripts/install-agent.sh \
-  --backend-url "https://outpost-listener.vercel.app" \
+  --backend-url "https://backend-outpost.onrender.com" \
   --org-code "DEMO-ORG" \
   --package-install \
   --no-passcode \
@@ -351,7 +351,7 @@ Check:
 Run:
 
 ```bash
-curl -fsSL https://outpost-listener.vercel.app/healthz
+curl -fsSL https://backend-outpost.onrender.com/healthz
 ```
 
 Expected response:

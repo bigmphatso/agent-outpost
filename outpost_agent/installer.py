@@ -7,7 +7,7 @@ from pathlib import Path
 
 from outpost_agent.config import AgentConfig, config_security_summary, default_config_path, harden_path_permissions, load_config, save_config
 
-DEFAULT_BACKEND_URL = "https://outpost-listener.vercel.app"
+DEFAULT_BACKEND_URL = "https://backend-outpost.onrender.com"
 
 
 def prompt_if_missing(value: str | None, label: str) -> str:

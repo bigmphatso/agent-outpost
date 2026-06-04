@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BACKEND_URL="https://outpost-listener.vercel.app"
+BACKEND_URL="https://backend-outpost.onrender.com"
 ORG_CODE=""
 PASSCODE=""
 API_KEY=""
@@ -19,7 +19,7 @@ usage() {
 Usage: install-agent.sh [options]
 
 Options:
-  --backend-url URL       Backend API URL. Default: https://outpost-listener.vercel.app
+  --backend-url URL       Backend API URL. Default: https://backend-outpost.onrender.com
   --org-code CODE         Organisational code issued from OUTPOST.
   --passcode PASSCODE     PASSCODE used for authenticated backend calls.
   --api-key KEY           Legacy alias for --passcode.
