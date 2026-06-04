@@ -103,7 +103,7 @@ For IT staff or repeat installs, pass all values:
 sudo ./install-outpost-agent.sh \
   --backend-url "https://outpost-listener.vercel.app" \
   --org-code "DEMO-ORG" \
-  --passcode "YOUR-PASSCODE" \
+  --passcode "OUTPOST_API_KEY@2000" \
   --poll-interval 30 \
   --install-service \
   --start-agent
