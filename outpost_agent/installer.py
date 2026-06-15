@@ -5,7 +5,15 @@ import getpass
 import os
 from pathlib import Path
 
-from outpost_agent.config import AgentConfig, config_security_summary, default_config_path, harden_path_permissions, load_config, save_config
+from outpost_agent.config import (
+    AgentConfig,
+    config_security_summary,
+    default_config_path,
+    harden_path_permissions,
+    load_config,
+    normalize_backend_url,
+    save_config,
+)
 
 DEFAULT_BACKEND_URL = "https://backend-outpost.onrender.com"
 
@@ -36,7 +44,7 @@ def install_agent(
     api_key: str | None = None,
 ) -> Path:
     config = AgentConfig(
-        backend_url=backend_url.rstrip("/"),
+        backend_url=normalize_backend_url(backend_url),
         org_code=org_code.strip().upper(),
         poll_interval_seconds=poll_interval,
         api_key=api_key,
@@ -68,7 +76,7 @@ def main() -> None:
         "PASSCODE (API)",
     )
     config = AgentConfig(
-        backend_url=args.backend.rstrip("/"),
+        backend_url=normalize_backend_url(args.backend),
         org_code=org_code.strip().upper(),
         poll_interval_seconds=args.poll_interval,
         api_key=api_key,

@@ -9,6 +9,7 @@ import stat
 import subprocess
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from urllib.parse import urlparse, urlunparse
 
 
 APP_DIR_NAME = "OUTPOST"
@@ -35,6 +36,23 @@ class AgentConfig:
     poll_interval_seconds: int = 30
     device_id: str | None = None
     api_key: str | None = None
+
+
+def normalize_backend_url(value: str) -> str:
+    raw = value.strip().rstrip("/")
+    if not raw:
+        return raw
+
+    parsed = urlparse(raw)
+    if not parsed.scheme:
+        parsed = urlparse(f"http://{raw}")
+
+    hostname = (parsed.hostname or "").lower()
+    scheme = parsed.scheme
+    if hostname in {"localhost", "127.0.0.1", "::1"} and scheme == "https":
+        scheme = "http"
+
+    return urlunparse(parsed._replace(scheme=scheme)).rstrip("/")
 
 
 class _DataBlob(ctypes.Structure):
@@ -130,6 +148,7 @@ def save_config(config: AgentConfig, path: Path | None = None) -> Path:
     config_path = path or default_config_path()
     harden_path_permissions(config_path)
     payload = asdict(config)
+    payload["backend_url"] = normalize_backend_url(str(payload.get("backend_url") or ""))
     api_key = payload.pop("api_key", None)
     if api_key:
         payload["api_key_protected"] = protect_secret(api_key)
@@ -153,6 +172,14 @@ def load_config(path: Path | None = None) -> AgentConfig:
         raw_config["org_code"] = raw_config.pop("activation_code")
     if "api_key_protected" in raw_config:
         raw_config["api_key"] = unprotect_secret(raw_config.pop("api_key_protected"))
+    if "backend_url" in raw_config:
+        normalized_backend_url = normalize_backend_url(str(raw_config["backend_url"]))
+        if normalized_backend_url != raw_config["backend_url"]:
+            raw_config["backend_url"] = normalized_backend_url
+            config_path.write_text(json.dumps(raw_config, indent=2), encoding="utf-8")
+            harden_path_permissions(config_path)
+        else:
+            raw_config["backend_url"] = normalized_backend_url
     return AgentConfig(**raw_config)
 
 
